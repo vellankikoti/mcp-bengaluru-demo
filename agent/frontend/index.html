@@ -2478,14 +2478,31 @@ async function refreshAlerts() {
       list.innerHTML=`<div class="no-alerts-msg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> All clear</div>`;
       return;
     }
-    if (pill) { pill.textContent=count; pill.classList.add('show'); }
-    list.innerHTML = alerts.slice(0,6).map(a=>{
-      const lb=a.labels||{}; const sev=lb.severity||'warning'; const name=lb.alertname||'Alert'; const ns=lb.namespace||'-';
-      return `<div class="alert-row" onclick="chat('Tell me about the ${esc(name)} alert and how to resolve it')">
+    // Deduplicate by alertname — show highest severity when multiple instances fire
+    const SEV_RANK = {critical:0, warning:1, info:2, none:3};
+    const deduped = new Map();
+    for (const a of alerts) {
+      const lb = a.labels || {};
+      const name = lb.alertname || 'Alert';
+      if (lb.severity === 'none') continue; // skip Watchdog heartbeat
+      const existing = deduped.get(name);
+      if (!existing || (SEV_RANK[lb.severity] ?? 2) < (SEV_RANK[existing.sev] ?? 2)) {
+        deduped.set(name, { sev: lb.severity || 'warning', ns: lb.namespace || '-', count: 1 });
+      } else {
+        existing.count++;
+      }
+    }
+    const unique = [...deduped.entries()];
+    if (pill) { pill.textContent = unique.length; pill.classList.add('show'); }
+    list.innerHTML = unique.slice(0, 6).map(([name, {sev, ns, count}]) =>
+      `<div class="alert-row" onclick="chat('Tell me about the ${esc(name)} alert and how to resolve it')">
         <div class="alert-sev-bar ${sev}"></div>
-        <div class="alert-info"><div class="alert-name">${esc(name)}</div><div class="alert-ns">${esc(ns)}</div></div>
-      </div>`;
-    }).join('');
+        <div class="alert-info">
+          <div class="alert-name">${esc(name)}${count > 1 ? ` <span style="font-size:9px;opacity:.6;font-weight:500">×${count}</span>` : ''}</div>
+          <div class="alert-ns">${esc(ns)}</div>
+        </div>
+      </div>`
+    ).join('');
   } catch(_) {}
 }
 
