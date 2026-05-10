@@ -11,7 +11,7 @@ A production-grade demo showing how an AI agent can diagnose and remediate Kuber
 2. **The Dangerous Agent** — what happens when you skip the policy layer (live credential exposure)
 3. **The Security Model** — OPA-style policy gates, human approval, scoped tokens, tamper-evident audit
 
-The agent is built with [FastMCP](https://github.com/jlowin/fastmcp), streams responses over SSE, and runs entirely local — no cloud infrastructure needed.
+The agent is built with FastAPI, streams responses over SSE, and runs entirely local — no cloud infrastructure needed.
 
 ---
 
@@ -21,10 +21,10 @@ The agent is built with [FastMCP](https://github.com/jlowin/fastmcp), streams re
 Browser UI (SSE stream)
        │
        ▼
-FastAPI Agent Server  ──► Claude / OpenAI / OpenRouter
+FastAPI Agent Server  ──► Any LLM (Anthropic / OpenAI / OpenRouter / Groq / Google)
        │
        ├── Policy Engine (OPA-style: ALLOW / DENY / REQUIRE_APPROVAL)
-       │         └── Human Approval Gate (asyncio.Event + 60s timeout)
+       │         └── Human Approval Gate (asyncio.Event + 300s timeout)
        │
        ├── MCP Tools ──► Kubernetes API (list_pods, describe_pod, restart_deployment …)
        │             ──► Prometheus (metrics queries)
@@ -56,7 +56,6 @@ FastAPI Agent Server  ──► Claude / OpenAI / OpenRouter
 | kubectl | ≥ 1.29 | `brew install kubectl` |
 | helm | ≥ 3.14 | `brew install helm` |
 | Python | ≥ 3.11 | `brew install python@3.11` |
-| gh | ≥ 2.40 | `brew install gh` (for GitHub push only) |
 
 An API key from one of: **Anthropic**, OpenAI, OpenRouter, Groq, or Google AI.
 
@@ -71,33 +70,51 @@ make up
 # 2. Verify everything is healthy
 make smoke
 
-# 3. Add your API key
+# 3. Install Python dependencies
+pip install -r agent/requirements.txt
+
+# 4. (Optional) Add an Anthropic key for default Anthropic provider
 echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env
 
-# 4. Start the agent (auto-starts port-forwards)
+# 5. Start the agent (auto-starts port-forwards)
 make agent
 ```
 
-Open **http://localhost:8082** — click **Connect AI**, paste your key, save.
+Open **http://localhost:8082** in your browser.
 
 ---
 
 ## API Key Setup
 
-The agent supports multiple AI providers. Choose one:
+The agent supports multiple AI providers. Choose **one** of the following approaches:
+
+### Option A — Anthropic (via .env file)
 
 ```bash
-# Anthropic (recommended — best tool use)
 echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env
-
-# OpenAI
-echo 'OPENAI_API_KEY=sk-...' > agent/.env
-
-# OpenRouter (access to many models)
-echo 'OPENAI_API_KEY=sk-or-...' > agent/.env
+make agent
 ```
 
-Or enter the key directly in the browser UI under **Connect AI (⚙)**.
+The key is loaded automatically on start.
+
+### Option B — Any provider (via browser UI)
+
+Start the agent without a key, then open **http://localhost:8082** and click the provider pill in the sidebar:
+
+1. Click **OpenRouter** (or Anthropic / OpenAI / Groq / Google AI)
+2. Paste your API key
+3. Select a model chip
+4. Click **Save & Test**
+
+**Recommended for conference demos:** Use **OpenRouter** with model **`anthropic/claude-3.5-haiku`** — tested end-to-end, calls `restart_deployment` in a single turn, ~10× cheaper than Sonnet.
+
+| Provider | Key prefix | Tested model | Notes |
+|---|---|---|---|
+| Anthropic | `sk-ant-` | `claude-sonnet-4-6` | Best for Anthropic native |
+| OpenRouter | `sk-or-` | `anthropic/claude-3.5-haiku` | **Recommended for demos** |
+| OpenAI | `sk-` | `gpt-4o` | Works; gpt-4o-mini skips write tools |
+| Groq | `gsk_` | `llama-3.3-70b-versatile` | Ultra-fast, cheaper |
+| Google AI | `AIza` | `gemini-2.0-flash` | — |
 
 ---
 
@@ -112,15 +129,15 @@ make inject-oom     # payment-service OOMKills in ~30s
 In the agent UI, type:
 > *"We have a production incident. Payment service is down and orders are failing. Diagnose and fix it."*
 
-The agent will:
+The agent will (in a single turn):
 1. Check alerts → sees `PaymentServiceCrashLooping`
 2. List pods → sees `CrashLoopBackOff`
 3. Describe pod → confirms `OOMKilled` exit 137
 4. Read logs → sees memory allocation climbing to limit
 5. Query Prometheus → quantifies error rate
-6. Propose `restart_deployment` → **approval card appears**
+6. Call `restart_deployment` → **approval card appears in UI**
 7. You click **Approve** → scoped token minted → restart fires in the real cluster
-8. Draft postmortem automatically while the rollout is in progress
+8. Agent calls `draft_postmortem` and produces a structured incident report
 
 ```bash
 make recover        # reset all faults after the demo
@@ -171,7 +188,7 @@ http://localhost:8082/?replay=dangerous-agent&mode=presentation
 - `F5` — Cascade OOM replay
 - `F6` — Dangerous agent replay (auto-enables danger mode)
 
-**Via UI:** Click the **▶ Replay** button in the topbar.
+**Via UI:** Click the **Demo** dropdown in the topbar → choose a replay scenario.
 
 Speed control: append `&speed=2` for 2× playback during rehearsal.
 
@@ -223,12 +240,15 @@ Every tool call is evaluated by `agent/policy.py` before execution:
 |---|---|---|
 | `list_pods`, `get_pod_logs`, `describe_pod` | ALLOW | `k8s.read.pods` |
 | `prometheus_query`, `prometheus_range`, `get_alerts` | ALLOW | `observability.*` |
+| `get_events`, `get_deployments`, `get_node_status`, `get_hpa_status` | ALLOW | `k8s.read.*` |
 | `draft_postmortem` | ALLOW | `docs.postmortem.write` |
 | `list_secrets` | **DENY** | `k8s.read.secrets` |
 | `restart_deployment` | REQUIRE_APPROVAL | `k8s.write.deployments` |
 | `scale_deployment` | REQUIRE_APPROVAL | `k8s.write.deployments` |
 
-When `security_on = False` (danger mode), all tools return ALLOW — this is the "dangerous agent" demo state.
+When **Policy Gates: OFF** (danger mode), all tools return ALLOW — this is the "dangerous agent" demo state.
+
+Approval gate timeout: **300 seconds** (5 min) — plenty of time for live audience Q&A.
 
 ---
 
@@ -240,7 +260,8 @@ When `security_on = False` (danger mode), all tools return ALLOW — this is the
 │   ├── server.py             # SSE streaming, approval gate, audit log
 │   ├── tools.py              # Kubernetes + Prometheus + postmortem tools
 │   ├── policy.py             # OPA-style policy engine
-│   ├── frontend/index.html   # Single-file UI (2900 lines, no build step)
+│   ├── requirements.txt      # Python dependencies
+│   ├── frontend/index.html   # Single-file UI (no build step)
 │   ├── demo-recordings/      # Pre-recorded SSE streams for replay mode
 │   │   ├── cascade.jsonl     # OOM cascade scenario (42 events)
 │   │   └── dangerous-agent.jsonl
@@ -259,11 +280,6 @@ When `security_on = False` (danger mode), all tools return ALLOW — this is the
 │   ├── inject-incident.sh
 │   ├── smoke-test.sh
 │   └── setup-tmux.sh
-├── 00-mcp-k8s-utility/       # Companion MCP server: utility tools
-├── 01-mcp-k8s-secure-ops/    # Companion MCP server: secure operations
-├── 02-mcp-observatory/       # Companion MCP server: observability
-├── 03-mcp-deploy-intel/      # Companion MCP server: deployment intelligence
-├── 04-mcp-prod-readiness/    # Companion MCP server: production readiness
 └── Makefile
 ```
 
@@ -272,19 +288,25 @@ When `security_on = False` (danger mode), all tools return ALLOW — this is the
 ## Troubleshooting
 
 **"Frontend not found"**  
-The server was started from the wrong directory. Always use `make agent`, which runs `agent/start.sh` and sets the correct working directory.
+Always use `make agent`, which runs `agent/start.sh` from the correct directory.
 
 **Port-forwards dying between sessions**  
 `make agent` auto-restarts them on launch. If they die mid-demo, run `make agent` in a new terminal.
 
 **"No API key configured"**  
-Create `agent/.env` with `ANTHROPIC_API_KEY=sk-ant-...`, or enter the key in the browser UI under **Connect AI**.
+Either create `agent/.env` with `ANTHROPIC_API_KEY=sk-ant-...`, or enter the key in the browser UI sidebar under the provider pills.
+
+**OpenRouter key not working**  
+Enter it in the browser UI — paste into the **API Key** field after selecting the OpenRouter provider pill. The `.env` file is only read for `ANTHROPIC_API_KEY`.
 
 **`make smoke` failing on payment-service**  
-If you ran `make inject-oom`, this is expected — the service is intentionally crashing. Run `make recover` first.
+If you ran `make inject-oom`, this is expected. Run `make recover` first.
 
 **Port 9090 conflict with Docker Desktop**  
 Docker Desktop uses port 9090 for its own Prometheus. This demo uses **9092** for kind-mcp-demo's Prometheus. `make agent` handles this automatically.
+
+**Agent diagnoses but doesn't call `restart_deployment`**  
+Use **`anthropic/claude-3.5-haiku`** via OpenRouter — tested to call write tools in a single turn. Models like `gpt-4o-mini` tend to describe recommendations as text rather than calling tools autonomously.
 
 **kind cluster missing after reboot**  
 ```bash

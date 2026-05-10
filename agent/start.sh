@@ -66,7 +66,7 @@ PORT="${PORT:-8082}"
 
 echo -e "${CYAN}[agent]${RESET} Starting MCP Incident Agent on http://localhost:${PORT}"
 echo -e "${CYAN}[agent]${RESET} Cluster:  ${CTX} (kubeconfig: $KUBECONFIG)"
-echo -e "${CYAN}[agent]${RESET} Model:    claude-sonnet-4-6"
+echo -e "${CYAN}[agent]${RESET} Model:    configurable in browser UI (default: claude-3.5-haiku via OpenRouter)"
 echo -e "${CYAN}[agent]${RESET} Prometheus  → http://localhost:9092"
 echo -e "${CYAN}[agent]${RESET} Alertmanager → http://localhost:9093"
 echo -e "${CYAN}[agent]${RESET} Grafana      → http://localhost:3002"
