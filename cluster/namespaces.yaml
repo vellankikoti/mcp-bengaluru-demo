@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    environment: production
+    mcp.io/blast-radius-multiplier: "1.5"
+    mcp.io/approval-required-above: "MEDIUM"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+  labels:
+    environment: staging
+    mcp.io/blast-radius-multiplier: "1.0"
+    mcp.io/approval-required-above: "HIGH"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-system
+  labels:
+    mcp.io/system: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-pipeline
+  labels:
+    environment: production
+    mcp.io/blast-radius-multiplier: "2.0"
+    mcp.io/approval-required-above: "LOW"

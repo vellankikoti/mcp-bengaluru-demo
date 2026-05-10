@@ -1,0 +1,320 @@
+{
+  "uid": "mcp-golden-signals",
+  "title": "Service Golden Signals",
+  "description": "RPS, error rate, latency for all 6 demo services — maps to MCP get_service_metrics",
+  "tags": ["mcp-demo", "production", "golden-signals"],
+  "style": "dark",
+  "schemaVersion": 37,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "editable": true,
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "links": [],
+  "panels": [
+    {
+      "id": 100, "type": "row", "title": "Throughput — Requests per Second", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}
+    },
+    {
+      "id": 1, "type": "timeseries", "title": "Payment Service — RPS by Status",
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 1},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 8},
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "500"},
+            "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "200"},
+            "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (status) (rate(payment_requests_total[1m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Order Service — RPS by Status",
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 1},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 8}, "min": 0
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (status) (rate(orders_total[1m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Auth Service — RPS",
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {"unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 8}, "min": 0}
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (status) (rate(auth_requests_total[1m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Notification Service — RPS",
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {"unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 8}, "min": 0}
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(notifications_sent_total[1m])",
+          "legendFormat": "sent"
+        }
+      ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Email Gateway — RPS (429 = rate limited)",
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {"unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 8}, "min": 0},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "429"},
+            "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (status) (rate(email_gateway_requests_total[1m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 200, "type": "row", "title": "Error Rates", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Error Rate — All Services (% of requests)",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {"lineWidth": 2, "fillOpacity": 10, "spanNulls": false},
+          "min": 0, "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.05}]
+          }
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(payment_requests_total{status=\"500\"}[1m]) / rate(payment_requests_total[1m])",
+          "legendFormat": "payment-service"
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(orders_total{status=~\"payment_failed|payment_timeout\"}[1m]) / rate(orders_total[1m])",
+          "legendFormat": "order-service (payment failures)"
+        },
+        {
+          "refId": "C",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(auth_requests_total{status=\"503\"}[1m]) / rate(auth_requests_total[1m])",
+          "legendFormat": "auth-service"
+        },
+        {
+          "refId": "D",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(email_gateway_requests_total{status=\"429\"}[1m]) / rate(email_gateway_requests_total[1m])",
+          "legendFormat": "email-gateway (rate limited)"
+        }
+      ]
+    },
+    {
+      "id": 300, "type": "row", "title": "Latency", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Order Service p50 / p95 / p99 Latency vs SLO",
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {"lineWidth": 2, "fillOpacity": 5, "spanNulls": false},
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "SLO (2s)"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}},
+              {"id": "custom.lineStyle", "value": {"dash": [10, 10], "fill": "dash"}}
+            ]
+          }
+        ]
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "histogram_quantile(0.50, rate(order_request_duration_seconds_bucket[2m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "histogram_quantile(0.95, rate(order_request_duration_seconds_bucket[2m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "histogram_quantile(0.99, rate(order_request_duration_seconds_bucket[2m]))",
+          "legendFormat": "p99"
+        },
+        {
+          "refId": "D",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "2.0",
+          "legendFormat": "SLO (2s)"
+        }
+      ]
+    },
+    {
+      "id": 8, "type": "stat", "title": "SLO Breaches (p99 > 2s)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]
+          },
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {"0": {"color": "green", "text": "WITHIN SLO"}}}
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "background", "graphMode": "none",
+        "reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "count(histogram_quantile(0.99, rate(order_request_duration_seconds_bucket[2m])) > 2) OR vector(0)",
+          "legendFormat": "SLO Breaches"
+        }
+      ]
+    },
+    {
+      "id": 400, "type": "row", "title": "Retry Storm Detector", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 33}
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Notification Service → Email Gateway Retry Rate",
+      "gridPos": {"h": 7, "w": 16, "x": 0, "y": 34},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 15}, "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 5}, {"color": "red", "value": 20}]
+          }
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(email_gateway_requests_total[30s])",
+          "legendFormat": "email-gateway total inbound"
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "rate(email_gateway_requests_total{status=\"429\"}[30s])",
+          "legendFormat": "rate-limited (429)"
+        }
+      ]
+    },
+    {
+      "id": 10, "type": "stat", "title": "Retry Storm Active",
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 34},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]
+          },
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {"0": {"color": "green", "text": "INACTIVE"}}}
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "background", "graphMode": "none",
+        "reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "notification_retry_storm_active OR vector(0)",
+          "legendFormat": "Retry Storm"
+        }
+      ]
+    }
+  ]
+}

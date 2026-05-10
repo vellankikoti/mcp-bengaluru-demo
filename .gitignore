@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Secrets — never commit
+.env
+*.env
+agent/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+/tmp/
+
+# uv
+.python-version
+00-mcp-k8s-utility
+01-mcp-k8s-secure-ops
+02-mcp-observatory
+03-mcp-deploy-intel
+04-mcp-prod-readiness

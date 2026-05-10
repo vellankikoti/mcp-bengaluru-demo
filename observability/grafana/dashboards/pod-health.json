@@ -1,0 +1,148 @@
+{
+  "uid": "mcp-pod-health",
+  "title": "Production Pod Health",
+  "description": "CPU, memory and restart signals per pod — maps to MCP get_pod_status / get_pod_logs",
+  "tags": ["mcp-demo", "production", "pods"],
+  "style": "dark",
+  "schemaVersion": 37,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "editable": true,
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "links": [],
+  "panels": [
+    {
+      "id": 100, "type": "row", "title": "CPU", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}
+    },
+    {
+      "id": 1, "type": "timeseries", "title": "Pod CPU Usage (cores)",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 1},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "custom": {"lineWidth": 2, "fillOpacity": 8, "spanNulls": false},
+          "min": 0
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"production\", container!=\"\", container!=\"POD\"}[2m]))",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 200, "type": "row", "title": "Memory", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Pod Memory Working Set",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 10},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {"lineWidth": 2, "fillOpacity": 8, "spanNulls": false},
+          "min": 0
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"production\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 300, "type": "row", "title": "Restarts & Availability", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18}
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Pod Restarts (5m window) — OOMKill / CrashLoop shows here",
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {"lineWidth": 2, "fillOpacity": 15, "spanNulls": false},
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 3}]
+          },
+          "color": {"mode": "thresholds"}
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"production\"}[5m])",
+          "legendFormat": "{{pod}} / {{container}}"
+        }
+      ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Deployment Replicas Available",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 1}, {"color": "green", "value": 2}]
+          },
+          "color": {"mode": "thresholds"}
+        }
+      },
+      "options": {
+        "colorMode": "background", "graphMode": "none",
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "orientation": "auto", "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "kube_deployment_status_replicas_available{namespace=\"production\"}",
+          "legendFormat": "{{deployment}}"
+        }
+      ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "OOMKilled Containers (any namespace)",
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 27},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {"lineWidth": 2, "fillOpacity": 20},
+          "min": 0,
+          "color": {"fixedColor": "red", "mode": "fixed"}
+        }
+      },
+      "options": {"tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "kube_pod_container_status_last_terminated_reason{namespace=\"production\", reason=\"OOMKilled\"}",
+          "legendFormat": "{{pod}} OOMKilled"
+        }
+      ]
+    }
+  ]
+}

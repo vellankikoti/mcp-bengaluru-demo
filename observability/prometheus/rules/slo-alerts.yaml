@@ -1,0 +1,137 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mcp-demo-slo-alerts
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: payment-service-slo
+      interval: 10s
+      rules:
+        - alert: PaymentServiceHighErrorRate
+          expr: |
+            (
+              rate(payment_requests_total{status="500"}[2m])
+              /
+              rate(payment_requests_total[2m])
+            ) > 0.05
+          for: 15s
+          labels:
+            severity: critical
+            service: payment-service
+            namespace: production
+          annotations:
+            summary: "Payment service error rate > 5%"
+            description: "Error rate {{ $value | humanizePercentage }} on payment-service"
+
+        - alert: PaymentServiceCrashLoopBackOff
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="production",
+              container="payment"
+            }[5m]) > 3
+          for: 0s
+          labels:
+            severity: critical
+            service: payment-service
+          annotations:
+            summary: "payment-service pod restarting repeatedly"
+            description: "{{ $labels.pod }} restarted {{ $value }} times in 5m"
+
+    - name: order-service-slo
+      interval: 10s
+      rules:
+        - alert: OrderServiceP99LatencyHigh
+          expr: |
+            histogram_quantile(0.99,
+              rate(order_request_duration_seconds_bucket[2m])
+            ) > 2.0
+          for: 30s
+          labels:
+            severity: warning
+            service: order-service
+            namespace: production
+          annotations:
+            summary: "Order service p99 latency > 2s"
+            description: "p99={{ $value | humanizeDuration }}"
+
+        - alert: OrderServiceHighErrorRate
+          expr: |
+            (
+              rate(orders_total{status=~"payment_failed|payment_timeout"}[2m])
+              /
+              rate(orders_total[2m])
+            ) > 0.1
+          for: 20s
+          labels:
+            severity: critical
+            service: order-service
+            namespace: production
+          annotations:
+            summary: "Order service dependency failures > 10%"
+
+    - name: notification-retry-storm
+      interval: 10s
+      rules:
+        - alert: NotificationRetryStormActive
+          expr: notification_retry_storm_active > 0
+          for: 0s
+          labels:
+            severity: warning
+            service: notification-service
+            namespace: production
+          annotations:
+            summary: "Notification service retry storm detected"
+            description: "Active retry workers: {{ $value }}"
+
+        - alert: EmailGatewayRateLimited
+          expr: |
+            rate(email_gateway_requests_total{status="429"}[1m]) > 2
+          for: 15s
+          labels:
+            severity: warning
+            service: email-gateway
+          annotations:
+            summary: "Email gateway returning 429s"
+
+    - name: auth-service
+      interval: 10s
+      rules:
+        - alert: AuthServiceDegraded
+          expr: |
+            (
+              rate(auth_requests_total{status="503"}[2m])
+              /
+              rate(auth_requests_total[2m])
+            ) > 0.1
+          for: 20s
+          labels:
+            severity: critical
+            service: auth-service
+          annotations:
+            summary: "Auth service degraded"
+
+    - name: cluster-health
+      interval: 30s
+      rules:
+        - alert: PodCrashLoopingAny
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="production"}[10m]) > 5
+          for: 0s
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} crash looping"
+            description: "{{ $value }} restarts in 10m"
+
+        - alert: HPAMaxedOut
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas
+            >= kube_horizontalpodautoscaler_spec_max_replicas
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA {{ $labels.horizontalpodautoscaler }} at max replicas"

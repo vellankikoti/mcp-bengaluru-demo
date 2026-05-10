@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Incident Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+/* ── Light design tokens (Apple HIG-inspired) ───────────────────────── */
+:root {
+  --bg:        hsl(216 22% 96%);
+  --card:      hsl(0 0% 100%);
+  --card-2:    hsl(216 18% 97%);
+  --card-3:    hsl(216 16% 93%);
+  --card-4:    hsl(216 14% 89%);
+  --border:    hsl(216 14% 88%);
+  --border-2:  hsl(216 12% 80%);
+  --border-3:  hsl(216 10% 70%);
+  --txt:       hsl(222 47% 11%);
+  --txt-2:     hsl(215 25% 35%);
+  --txt-3:     hsl(215 20% 52%);
+  --txt-4:     hsl(215 15% 68%);
+  --blue:      hsl(217 91% 50%);
+  --blue-dim:  hsl(217 91% 95%);
+  --blue-glow: rgba(59,130,246,.09);
+  --blue-fg:   hsl(217 91% 42%);
+  --purple:    hsl(263 60% 55%);
+  --purple-dim:hsl(263 60% 96%);
+  --green:     hsl(142 60% 36%);
+  --green-dim: hsl(142 60% 95%);
+  --green-glow:rgba(22,163,74,.1);
+  --amber:     hsl(38 90% 42%);
+  --amber-dim: hsl(38 90% 96%);
+  --amber-glow:rgba(217,119,6,.09);
+  --red:       hsl(0 72% 50%);
+  --red-dim:   hsl(0 72% 97%);
+  --red-glow:  rgba(220,38,38,.08);
+  --cyan:      hsl(190 80% 36%);
+  --r-xs:4px; --r-sm:6px; --r:8px; --r-md:10px;
+  --r-lg:12px; --r-xl:16px; --r-2xl:20px; --r-full:9999px;
+  --s1: 0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --s2: 0 4px 12px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.05);
+  --s3: 0 8px 32px rgba(0,0,0,.10),0 4px 12px rgba(0,0,0,.07);
+  --s4: 0 16px 48px rgba(0,0,0,.13),0 8px 20px rgba(0,0,0,.09);
+  --ease: cubic-bezier(0.4,0,0.2,1);
+  --ease-spring: cubic-bezier(0.175,0.885,0.32,1.275);
+  --ease-expo: cubic-bezier(0.16,1,0.3,1);
+  --dt-micro:100ms; --dt-fast:150ms; --dt-normal:250ms; --dt-mod:350ms;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse at 5% 0%, rgba(59,130,246,.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 95% 100%, rgba(139,92,246,.03) 0%, transparent 55%);
+}
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:var(--r-full); }
+::-webkit-scrollbar-thumb:hover { background:var(--border-3); }
+a,button,[role=button] { transition:var(--dt-fast) var(--ease); }
+
+/* ── Layout ──────────────────────────────────────────────────────────── */
+.app { display:grid; grid-template-columns:284px 1fr; height:100vh; position:relative; z-index:1; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════════════════════════ */
+.sidebar {
+  background:var(--card);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:var(--s2);
+}
+
+/* brand */
+.sb-brand { padding:18px 16px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.brand-row { display:flex; align-items:center; gap:11px; margin-bottom:14px; }
+.brand-glyph {
+  width:36px; height:36px;
+  background:linear-gradient(135deg, hsl(217 91% 52%) 0%, hsl(263 60% 52%) 100%);
+  border-radius:var(--r-lg);
+  display:flex; align-items:center; justify-content:center; font-size:17px;
+  box-shadow:0 4px 14px rgba(59,130,246,.25); flex-shrink:0;
+}
+.brand-title { font-size:14px; font-weight:700; letter-spacing:-.01em; color:var(--txt); }
+.brand-sub   { font-size:11px; color:var(--txt-3); font-weight:500; }
+.new-chat {
+  width:100%; background:var(--card-3); border:1px solid var(--border);
+  color:var(--txt-2); padding:8px 12px; border-radius:var(--r-lg);
+  cursor:pointer; font-size:13px; font-family:inherit; font-weight:500;
+  display:flex; align-items:center; gap:8px;
+}
+.new-chat:hover { background:var(--blue-dim); border-color:rgba(59,130,246,.3); color:var(--blue); }
+.new-chat:active { transform:scale(.98); }
+
+/* cluster section */
+.sb-cluster { padding:14px 16px; border-bottom:1px solid var(--border); flex-shrink:0; position:relative; }
+.sb-section-label {
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--txt-4); margin-bottom:10px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+/* cluster switcher */
+.cluster-switcher-row {
+  display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  position:relative;
+}
+.cluster-sel-btn {
+  flex:1; display:flex; align-items:center; gap:7px;
+  background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:6px 10px;
+  cursor:pointer; font-family:inherit; font-size:12px; font-weight:600;
+  color:var(--txt); text-align:left;
+  transition:all var(--dt-fast) var(--ease);
+}
+.cluster-sel-btn:hover { border-color:rgba(59,130,246,.4); background:var(--blue-dim); color:var(--blue); }
+.cluster-sel-btn .chevron { margin-left:auto; color:var(--txt-3); font-size:9px; transition:transform var(--dt-fast) var(--ease); }
+.cluster-sel-btn.open .chevron { transform:rotate(180deg); }
+.cluster-name-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+
+/* cluster dropdown */
+.cluster-dropdown {
+  position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:200;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r-xl); box-shadow:var(--s4);
+  padding:6px; display:none; flex-direction:column;
+}
+.cluster-dropdown.open { display:flex; }
+.cluster-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border-radius:var(--r-lg);
+  cursor:pointer; font-size:12px; color:var(--txt-2);
+  transition:all var(--dt-fast) var(--ease);
+}
+.cluster-item:hover { background:var(--card-2); color:var(--txt); }
+.cluster-item.active { color:var(--blue); font-weight:600; }
+.cluster-item-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+  background:var(--border-2);
+}
+.cluster-item.active .cluster-item-dot { background:var(--blue); box-shadow:0 0 5px rgba(59,130,246,.5); }
+.cluster-item-check { margin-left:auto; color:var(--blue); font-size:12px; }
+.cluster-item-env { font-size:10px; color:var(--txt-4); margin-left:auto; }
+.no-clusters-msg { font-size:12px; color:var(--txt-3); padding:8px 10px; }
+
+/* stat grid */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.stat-card {
+  background:var(--card-2); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:10px 12px; position:relative; overflow:hidden;
+  transition:all var(--dt-fast) var(--ease); cursor:default;
+}
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.stat-card.run::before   { background:linear-gradient(90deg, var(--green) 0%, rgba(22,163,74,.3) 100%); }
+.stat-card.crash::before { background:linear-gradient(90deg, var(--red) 0%, rgba(220,38,38,.3) 100%); }
+.stat-card.pend::before  { background:linear-gradient(90deg, var(--amber) 0%, rgba(217,119,6,.3) 100%); }
+.stat-card.depl::before  { background:linear-gradient(90deg, var(--blue) 0%, rgba(59,130,246,.3) 100%); }
+.stat-card:hover { background:var(--card-3); border-color:var(--border-2); transform:translateY(-1px); box-shadow:var(--s2); }
+.stat-num { font-size:22px; font-weight:800; line-height:1; margin-bottom:3px; letter-spacing:-.03em; }
+.stat-card.run   .stat-num { color:var(--green); }
+.stat-card.crash .stat-num { color:var(--red); }
+.stat-card.pend  .stat-num { color:var(--amber); }
+.stat-card.depl  .stat-num { color:var(--blue); }
+.stat-label { font-size:10px; font-weight:600; color:var(--txt-3); text-transform:uppercase; letter-spacing:.04em; }
+
+.health-bar { display:flex; gap:2px; height:3px; border-radius:var(--r-full); overflow:hidden; margin-top:10px; }
+.hb-seg { height:100%; border-radius:var(--r-full); transition:width .5s var(--ease); }
+.hb-run   { background:var(--green); }
+.hb-crash { background:var(--red); }
+.hb-pend  { background:var(--amber); }
+
+.grafana-btn {
+  display:flex; align-items:center; gap:7px; width:100%; margin-top:10px;
+  padding:7px 10px; background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-lg); text-decoration:none; color:var(--txt-2); font-size:12px; font-weight:500;
+}
+.grafana-btn:hover { border-color:var(--amber); color:var(--amber); background:var(--amber-dim); }
+.grafana-btn .ext-icon { margin-left:auto; opacity:.5; }
+
+/* alerts */
+.sb-alerts { padding:12px 16px; border-bottom:1px solid var(--border); flex-shrink:0; max-height:180px; overflow-y:auto; }
+.alert-count-pill {
+  background:var(--red-dim); color:var(--red); font-size:10px; font-weight:700;
+  padding:1px 6px; border-radius:var(--r-full); border:1px solid rgba(220,38,38,.2); display:none;
+}
+.alert-count-pill.show { display:inline; }
+.alert-row {
+  display:flex; align-items:flex-start; gap:8px; cursor:pointer;
+  border-radius:var(--r-sm); margin:0 -4px; padding:6px 4px;
+  border-bottom:1px solid var(--border);
+  transition:background var(--dt-micro) var(--ease);
+}
+.alert-row:last-child { border-bottom:none; }
+.alert-row:hover { background:var(--card-3); }
+.alert-sev-bar { width:3px; height:36px; border-radius:var(--r-full); flex-shrink:0; margin-top:2px; }
+.alert-sev-bar.critical { background:var(--red); }
+.alert-sev-bar.warning  { background:var(--amber); }
+.alert-sev-bar.info     { background:var(--blue); }
+.alert-info .alert-name { font-size:12px; font-weight:500; color:var(--txt); line-height:1.4; }
+.alert-info .alert-ns   { font-size:10px; color:var(--txt-3); margin-top:2px; }
+.no-alerts-msg { color:var(--txt-3); font-size:12px; display:flex; align-items:center; gap:7px; padding:4px 0; }
+
+/* history */
+.sb-history { flex:1; overflow-y:auto; padding:10px 8px; }
+.conv-item {
+  padding:8px 10px; border-radius:var(--r-lg); cursor:pointer;
+  color:var(--txt-2); font-size:12px; font-weight:500;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  display:flex; align-items:center; gap:8px;
+  transition:all var(--dt-fast) var(--ease); position:relative;
+}
+.conv-item::before {
+  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:0; height:60%; background:rgba(59,130,246,.25); border-radius:0 3px 3px 0;
+  transition:width var(--dt-fast) var(--ease);
+}
+.conv-item:hover { background:var(--card-2); color:var(--txt); }
+.conv-item:hover::before { width:3px; }
+.conv-item.active { background:var(--blue-dim); color:var(--blue); }
+.conv-item.active::before { width:3px; background:var(--blue); }
+.conv-dot { width:5px; height:5px; border-radius:50%; background:var(--border-2); flex-shrink:0; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════════════════════════════════ */
+.main { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+/* topbar */
+.topbar {
+  background:rgba(255,255,255,.88); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0; position:relative; z-index:10;
+  box-shadow: 0 1px 0 var(--border);
+}
+.topbar-left { display:flex; align-items:center; gap:10px; }
+.cluster-chip {
+  display:flex; align-items:center; gap:7px; padding:5px 12px;
+  background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-full); font-size:12px; font-weight:500; color:var(--txt-2);
+}
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.topbar-btn {
+  display:flex; align-items:center; gap:6px; padding:6px 12px;
+  background:transparent; border:1px solid var(--border); color:var(--txt-2);
+  border-radius:var(--r-lg); cursor:pointer; font-size:12px; font-family:inherit; font-weight:500;
+}
+.topbar-btn:hover { background:var(--card-3); color:var(--txt); border-color:var(--border-2); box-shadow:var(--s1); }
+.topbar-btn:active { transform:scale(.97); }
+.topbar-btn.ghost-red:hover { border-color:rgba(220,38,38,.35); color:var(--red); background:var(--red-dim); }
+
+.stream-pill {
+  display:none; align-items:center; gap:7px; padding:5px 12px;
+  background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.2);
+  border-radius:var(--r-full); font-size:12px; color:var(--blue); font-weight:500;
+}
+.stream-pill.active { display:flex; }
+.dots { display:flex; gap:3px; }
+.dots span {
+  width:4px; height:4px; border-radius:50%; background:var(--blue);
+  animation:bounce .8s ease-in-out infinite;
+}
+.dots span:nth-child(2) { animation-delay:.15s; }
+.dots span:nth-child(3) { animation-delay:.3s; }
+@keyframes bounce { 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+/* ── Messages ────────────────────────────────────────────────────────── */
+.messages { flex:1; overflow-y:auto; padding:32px 0; }
+.msgs-inner {
+  max-width:820px; margin:0 auto; padding:0 28px;
+  display:flex; flex-direction:column; gap:28px;
+}
+
+/* empty state */
+.empty { padding:48px 0 24px; }
+.empty-hero { text-align:center; margin-bottom:40px; }
+.empty-glyph {
+  width:64px; height:64px; margin:0 auto 20px;
+  background:linear-gradient(135deg, hsl(217 91% 52%) 0%, hsl(263 60% 58%) 100%);
+  border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:28px;
+  box-shadow:0 8px 32px rgba(59,130,246,.2), 0 2px 8px rgba(139,92,246,.15);
+}
+.empty-title {
+  font-size:22px; font-weight:800; letter-spacing:-.03em;
+  background:linear-gradient(135deg, var(--txt) 40%, var(--txt-2) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px;
+}
+.empty-sub { font-size:14px; color:var(--txt-2); max-width:400px; margin:0 auto; line-height:1.6; }
+
+.ai-callout {
+  max-width:480px; margin:0 auto 32px; background:var(--amber-dim);
+  border:1px solid rgba(217,119,6,.25); border-radius:var(--r-xl);
+  padding:16px 20px; display:none; align-items:center; gap:14px; position:relative; overflow:hidden;
+}
+.ai-callout::before { content:''; position:absolute; top:0;left:0;right:0;height:2px; background:linear-gradient(90deg, var(--amber), rgba(217,119,6,.3)); }
+.ai-callout.show { display:flex; }
+.ai-callout-icon { width:40px; height:40px; border-radius:var(--r-lg); flex-shrink:0; background:rgba(217,119,6,.12); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.ai-callout-body { flex:1; }
+.ai-callout-title { font-size:13px; font-weight:700; color:var(--amber); margin-bottom:3px; }
+.ai-callout-desc  { font-size:12px; color:var(--txt-2); line-height:1.5; }
+.ai-callout-btn {
+  padding:7px 14px; border-radius:var(--r-lg); background:var(--amber);
+  border:none; color:#fff; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600;
+  white-space:nowrap; flex-shrink:0; box-shadow:0 2px 8px rgba(217,119,6,.3);
+}
+.ai-callout-btn:hover { background:hsl(38 90% 38%); }
+
+.prompts-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.prompt-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-xl);
+  padding:16px; cursor:pointer; display:flex; align-items:flex-start; gap:12px;
+  transition:all var(--dt-normal) var(--ease); position:relative; overflow:hidden;
+}
+.prompt-card::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg, var(--blue-glow) 0%, transparent 60%);
+  opacity:0; transition:opacity var(--dt-normal) var(--ease); pointer-events:none;
+}
+.prompt-card:hover { border-color:rgba(59,130,246,.35); transform:translateY(-2px); box-shadow:var(--s3); }
+.prompt-card:hover::after { opacity:1; }
+.prompt-card:active { transform:translateY(-1px) scale(.99); }
+.prompt-icon-well {
+  width:36px; height:36px; border-radius:var(--r-lg);
+  display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;
+}
+.prompt-icon-well.blue   { background:linear-gradient(135deg, rgba(59,130,246,.18) 0%, rgba(96,165,250,.1) 100%); }
+.prompt-icon-well.red    { background:linear-gradient(135deg, rgba(220,38,38,.18) 0%, rgba(248,113,113,.1) 100%); }
+.prompt-icon-well.green  { background:linear-gradient(135deg, rgba(22,163,74,.18) 0%, rgba(74,222,128,.1) 100%); }
+.prompt-icon-well.purple { background:linear-gradient(135deg, rgba(139,92,246,.18) 0%, rgba(167,139,250,.1) 100%); }
+.prompt-icon-well.amber  { background:linear-gradient(135deg, rgba(217,119,6,.18) 0%, rgba(251,191,36,.1) 100%); }
+.prompt-icon-well.cyan   { background:linear-gradient(135deg, rgba(6,182,212,.18) 0%, rgba(103,232,249,.1) 100%); }
+.prompt-body .prompt-title { font-size:13px; font-weight:600; color:var(--txt); line-height:1.4; margin-bottom:3px; }
+.prompt-body .prompt-desc  { font-size:11px; color:var(--txt-3); line-height:1.4; }
+
+/* messages */
+.msg { animation:fadeUp var(--dt-normal) var(--ease-expo) both; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+.msg-user { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+.msg-user-meta { font-size:11px; color:var(--txt-4); padding-right:2px; }
+.msg-user-bubble {
+  max-width:72%;
+  background:linear-gradient(135deg, hsl(217 91% 46%) 0%, hsl(217 91% 38%) 100%);
+  border:1px solid rgba(96,165,250,.15);
+  padding:11px 16px; border-radius:18px 18px 4px 18px;
+  font-size:14px; line-height:1.6; color:#fff; box-shadow:var(--s2);
+}
+
+.msg-agent { display:flex; flex-direction:column; gap:4px; }
+.msg-agent-meta { font-size:11px; color:var(--txt-4); display:flex; align-items:center; gap:7px; padding-left:2px; }
+.model-pill {
+  background:var(--blue-dim); color:var(--blue);
+  border:1px solid rgba(59,130,246,.2); padding:1px 7px; border-radius:var(--r-full); font-size:10px; font-weight:600;
+}
+.msg-agent-body { width:100%; }
+
+/* tool cards */
+.tool-calls { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.tool-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  overflow:hidden; transition:border-color var(--dt-fast) var(--ease), box-shadow var(--dt-fast) var(--ease);
+  position:relative;
+}
+.tool-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+.tool-card.read::before   { background:linear-gradient(180deg, var(--blue) 0%, rgba(59,130,246,.2) 100%); }
+.tool-card.write::before  { background:linear-gradient(180deg, var(--amber) 0%, rgba(217,119,6,.2) 100%); }
+.tool-card.metric::before { background:linear-gradient(180deg, var(--purple) 0%, rgba(139,92,246,.2) 100%); }
+.tool-card:hover { border-color:var(--border-2); box-shadow:var(--s2); }
+.tool-hdr {
+  display:flex; align-items:center; gap:9px; padding:10px 14px 10px 17px;
+  cursor:pointer; user-select:none; transition:background var(--dt-micro) var(--ease);
+}
+.tool-hdr:hover { background:var(--card-2); }
+.tool-icon-pill { width:24px; height:24px; border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.tool-card.read   .tool-icon-pill { background:rgba(59,130,246,.1); }
+.tool-card.write  .tool-icon-pill { background:rgba(217,119,6,.1); }
+.tool-card.metric .tool-icon-pill { background:rgba(139,92,246,.1); }
+.tool-fn { font-family:'JetBrains Mono','Fira Code',monospace; font-size:12px; font-weight:600; color:var(--blue); }
+.tool-card.write  .tool-fn { color:var(--amber); }
+.tool-card.metric .tool-fn { color:var(--purple); }
+.tool-args { font-size:11px; color:var(--txt-3); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tool-status { font-size:11px; display:flex; align-items:center; gap:5px; flex-shrink:0; font-weight:500; }
+.tool-status.run { color:var(--amber); }
+.tool-status.ok  { color:var(--green); }
+.tool-status.err { color:var(--red); }
+.spinner { width:10px; height:10px; border:1.5px solid var(--amber); border-top-color:transparent; border-radius:50%; animation:spin .6s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.tool-chevron { color:var(--txt-4); font-size:10px; transition:transform var(--dt-fast) var(--ease); flex-shrink:0; }
+.tool-card.open .tool-chevron { transform:rotate(90deg); }
+.tool-body { display:none; border-top:1px solid var(--border); background:var(--card-2); }
+.tool-card.open .tool-body { display:block; }
+.tool-result {
+  font-family:'JetBrains Mono','Fira Code',monospace; font-size:11.5px; color:var(--txt-2);
+  white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto;
+  line-height:1.55; padding:12px 14px 12px 17px;
+}
+
+/* agent markdown */
+.agent-md { font-size:14px; line-height:1.72; color:var(--txt); }
+.agent-md h1 { font-size:18px; font-weight:800; letter-spacing:-.02em; margin:18px 0 10px; }
+.agent-md h2 { font-size:16px; font-weight:700; letter-spacing:-.02em; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+.agent-md h3 { font-size:14px; font-weight:600; margin:12px 0 6px; }
+.agent-md p  { margin-bottom:10px; }
+.agent-md ul, .agent-md ol { margin:8px 0 10px 20px; }
+.agent-md li { margin-bottom:3px; }
+.agent-md strong { font-weight:700; }
+.agent-md em { font-style:italic; color:var(--txt-2); }
+.agent-md code {
+  font-family:'JetBrains Mono','Fira Code',monospace; font-size:12px; color:var(--cyan);
+  background:var(--card-3); border:1px solid var(--border); padding:1px 6px; border-radius:var(--r-sm);
+}
+.agent-md pre {
+  background:var(--card-2); border:1px solid var(--border); border-radius:var(--r-lg);
+  margin:12px 0; overflow-x:auto; position:relative;
+}
+.agent-md pre code { background:none; border:none; padding:14px 16px; color:inherit; display:block; font-size:12px; }
+.copy-btn {
+  position:absolute; top:8px; right:8px; background:var(--card-3); border:1px solid var(--border);
+  color:var(--txt-3); padding:3px 9px; border-radius:var(--r-sm); cursor:pointer;
+  font-size:10px; font-weight:600; font-family:inherit; opacity:0; transition:all var(--dt-fast) var(--ease);
+}
+.agent-md pre:hover .copy-btn { opacity:1; }
+.copy-btn:hover { color:var(--txt); border-color:var(--border-2); }
+.agent-md table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+.agent-md th { background:var(--card-3); padding:8px 12px; text-align:left; font-weight:600; border:1px solid var(--border); color:var(--txt-2); font-size:12px; }
+.agent-md td { padding:7px 12px; border:1px solid var(--border); }
+.agent-md tr:nth-child(even) td { background:var(--card-2); }
+.agent-md blockquote { border-left:3px solid var(--blue); padding:8px 14px; color:var(--txt-2); margin:10px 0; background:var(--blue-dim); border-radius:0 var(--r) var(--r) 0; }
+.agent-md hr { border:none; border-top:1px solid var(--border); margin:18px 0; }
+.agent-md a { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
+
+.cursor {
+  display:inline-block; width:2px; height:1.1em; background:var(--blue);
+  margin-left:2px; vertical-align:text-bottom; animation:blink 1s step-end infinite; border-radius:1px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* status dots */
+.status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; position:relative; }
+.status-dot.healthy  { background:var(--green); }
+.status-dot.healthy::after  { animation:pulse-g 2.5s ease-in-out infinite; }
+.status-dot.degraded { background:var(--amber); }
+.status-dot.degraded::after { animation:pulse-a 1.5s ease-in-out infinite; }
+.status-dot.critical { background:var(--red); }
+.status-dot.critical::after { animation:pulse-r 1s ease-in-out infinite; }
+.status-dot.unknown  { background:var(--border-2); }
+.status-dot::after { content:''; position:absolute; inset:-2px; border-radius:50%; opacity:0; }
+@keyframes pulse-g { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.4)} 50%{box-shadow:0 0 0 5px rgba(22,163,74,0)} }
+@keyframes pulse-a { 0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.5)} 50%{box-shadow:0 0 0 6px rgba(217,119,6,0)} }
+@keyframes pulse-r { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)} 50%{box-shadow:0 0 0 7px rgba(220,38,38,0)} }
+
+/* confirm card */
+.confirm-card {
+  background:var(--card); border:1px solid rgba(217,119,6,.3); border-radius:var(--r-xl);
+  padding:18px 20px; margin:10px 0; box-shadow:var(--s3); position:relative; overflow:hidden;
+}
+.confirm-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--amber) 0%, rgba(217,119,6,.3) 100%); }
+.confirm-title { font-size:13px; font-weight:700; color:var(--amber); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.confirm-rows { margin-bottom:16px; display:flex; flex-direction:column; gap:4px; }
+.confirm-row { display:flex; gap:8px; font-size:12px; }
+.confirm-row-key { color:var(--txt-3); font-weight:600; min-width:80px; }
+.confirm-row-val { color:var(--cyan); font-family:'JetBrains Mono',monospace; }
+.confirm-btns { display:flex; gap:8px; }
+.btn-cancel {
+  padding:7px 16px; border:1px solid var(--border); border-radius:var(--r-lg);
+  background:transparent; color:var(--txt-2); cursor:pointer; font-size:13px; font-family:inherit; font-weight:500;
+}
+.btn-cancel:hover { border-color:var(--border-2); color:var(--txt); }
+.btn-exec {
+  padding:7px 18px; border:1px solid rgba(22,163,74,.4); border-radius:var(--r-lg);
+  background:var(--green-dim); color:var(--green); cursor:pointer; font-size:13px; font-family:inherit; font-weight:700;
+}
+.btn-exec:hover { background:hsl(142 60% 90%); border-color:rgba(22,163,74,.6); }
+.btn-exec:active { transform:scale(.97); }
+
+/* input area */
+.input-area {
+  border-top:1px solid var(--border); padding:16px 28px 20px; flex-shrink:0;
+  background:rgba(255,255,255,.85); backdrop-filter:blur(12px);
+}
+.input-card {
+  max-width:820px; margin:0 auto; background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r-xl); padding:14px 16px; display:flex; align-items:flex-end; gap:10px;
+  transition:border-color var(--dt-fast) var(--ease), box-shadow var(--dt-fast) var(--ease);
+  box-shadow:var(--s1);
+}
+.input-card:focus-within { border-color:rgba(59,130,246,.45); box-shadow:0 0 0 3px rgba(59,130,246,.08), var(--s2); }
+.input-card textarea {
+  flex:1; background:transparent; border:none; outline:none;
+  color:var(--txt); font-size:14px; line-height:1.6; font-family:inherit; resize:none; min-height:24px; max-height:200px;
+}
+.input-card textarea::placeholder { color:var(--txt-4); }
+.send-btn {
+  width:36px; height:36px; border-radius:var(--r-lg); flex-shrink:0;
+  background:var(--blue); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:#fff; transition:all var(--dt-fast) var(--ease-spring); box-shadow:0 2px 8px rgba(59,130,246,.25);
+}
+.send-btn:hover { background:hsl(217 91% 45%); transform:translateY(-1px); box-shadow:0 4px 14px rgba(59,130,246,.35); }
+.send-btn:active { transform:scale(.94); }
+.send-btn:disabled { background:var(--card-3); color:var(--txt-4); cursor:not-allowed; transform:none; box-shadow:none; }
+.send-btn svg { width:16px; height:16px; }
+.input-footer { max-width:820px; margin:7px auto 0; display:flex; justify-content:space-between; align-items:center; }
+.input-hint { font-size:11px; color:var(--txt-4); display:flex; align-items:center; gap:6px; }
+.kbd {
+  background:var(--card-3); border:1px solid var(--border);
+  padding:1px 5px; border-radius:var(--r-xs); font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--txt-3);
+}
+.input-model-tag { font-size:11px; color:var(--txt-4); }
+
+.inline-error {
+  color:var(--red); font-size:13px; margin-top:8px; padding:10px 14px;
+  background:var(--red-dim); border:1px solid rgba(220,38,38,.2); border-radius:var(--r-lg);
+}
+.inline-error p { margin:0 0 6px; }
+.inline-error p:last-child { margin-bottom:0; }
+.inline-error code { background:rgba(220,38,38,.12); padding:1px 5px; border-radius:3px; font-size:11px; }
+
+/* toast */
+.toast {
+  position:fixed; bottom:24px; right:24px; min-width:200px;
+  background:rgba(255,255,255,.95); backdrop-filter:blur(16px);
+  border:1px solid var(--border-2); padding:11px 16px; border-radius:var(--r-xl);
+  font-size:13px; font-weight:500; color:var(--txt); box-shadow:var(--s4);
+  z-index:9999; display:none; animation:slideUp var(--dt-normal) var(--ease-expo);
+}
+.toast.show { display:block; }
+@keyframes slideUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* stagger for prompt grid */
+.prompts-grid .prompt-card:nth-child(1){animation-delay:.05s}
+.prompts-grid .prompt-card:nth-child(2){animation-delay:.10s}
+.prompts-grid .prompt-card:nth-child(3){animation-delay:.15s}
+.prompts-grid .prompt-card:nth-child(4){animation-delay:.20s}
+.prompts-grid .prompt-card:nth-child(5){animation-delay:.25s}
+.prompts-grid .prompt-card:nth-child(6){animation-delay:.30s}
+.prompts-grid .prompt-card { animation:fadeUp var(--dt-mod) var(--ease-expo) both; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOPBAR AI STATUS INDICATOR
+══════════════════════════════════════════════════════════════════════ */
+.ai-status-indicator {
+  display:flex; align-items:center; gap:5px;
+  font-size:12px; font-weight:500; color:var(--amber);
+  padding:5px 8px; border-radius:var(--r-lg);
+  background:var(--amber-dim); border:1px solid rgba(217,119,6,.25);
+}
+.ai-status-indicator.connected { color:var(--green); background:var(--green-dim); border-color:rgba(22,163,74,.3); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR AI ENGINE SECTION
+══════════════════════════════════════════════════════════════════════ */
+.sb-ai {
+  padding:14px 16px;
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.ai-status-pill {
+  font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  padding:2px 6px; border-radius:var(--r-full);
+}
+.ai-status-pill.not-connected { background:var(--amber-dim); color:var(--amber); }
+.ai-status-pill.connected { background:var(--green-dim); color:var(--green); }
+
+.ai-connected-card {
+  display:flex; align-items:center; gap:8px;
+  background:var(--green-dim); border:1px solid rgba(22,163,74,.25);
+  border-radius:var(--r-lg); padding:8px 10px; margin-bottom:4px;
+}
+.ai-conn-dot {
+  width:8px; height:8px; border-radius:50%; background:var(--green);
+  box-shadow:0 0 6px rgba(22,163,74,.4); flex-shrink:0;
+}
+.ai-conn-details { flex:1; min-width:0; }
+.ai-conn-provider { font-size:12px; font-weight:700; color:var(--green); }
+.ai-conn-model { font-size:10px; color:var(--green); opacity:.7; margin-top:1px; font-family:'JetBrains Mono',monospace; }
+.ai-reconfig-btn {
+  background:none; border:none; cursor:pointer; color:var(--green); opacity:.6; padding:2px;
+  border-radius:var(--r-sm); display:flex; align-items:center;
+}
+.ai-reconfig-btn:hover { opacity:1; background:rgba(22,163,74,.1); }
+
+.sb-ai-label {
+  font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--txt-4); margin:10px 0 5px;
+}
+.sb-ai-label:first-of-type { margin-top:4px; }
+
+.sb-provider-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.sb-provider-pill {
+  display:flex; align-items:center; gap:5px;
+  background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-md); padding:5px 7px; cursor:pointer;
+  transition:all var(--dt-fast) var(--ease);
+}
+.sb-provider-pill:hover { border-color:var(--border-2); background:var(--card-3); }
+.sb-provider-pill.selected { border-color:rgba(59,130,246,.45); background:var(--blue-dim); }
+.sb-provider-pill-icon {
+  width:16px; height:16px; border-radius:4px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:9px;
+}
+.sb-provider-pill-name { font-size:10px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.sb-key-row { display:flex; align-items:center; position:relative; }
+.sb-key-input {
+  width:100%; background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:7px 32px 7px 9px;
+  color:var(--txt); font-size:11px; font-family:'JetBrains Mono',monospace;
+  outline:none; transition:border-color var(--dt-fast) var(--ease);
+}
+.sb-key-input:focus { border-color:rgba(59,130,246,.5); box-shadow:0 0 0 2px rgba(59,130,246,.07); }
+.sb-key-input.valid { border-color:rgba(22,163,74,.45); }
+.sb-eye-btn {
+  position:absolute; right:7px; background:none; border:none;
+  cursor:pointer; font-size:12px; color:var(--txt-3); padding:2px;
+}
+.sb-key-badge {
+  font-size:10px; font-weight:600; padding:2px 7px; border-radius:var(--r-full);
+  margin-top:4px; display:inline-flex; align-items:center; gap:4px;
+}
+.sb-key-badge.ok { color:var(--green); background:var(--green-dim); border:1px solid rgba(22,163,74,.2); }
+.sb-key-badge.warn { color:var(--amber); background:var(--amber-dim); border:1px solid rgba(217,119,6,.2); }
+
+.sb-model-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.sb-model-chip {
+  background:var(--card-2); border:1px solid var(--border); border-radius:var(--r-md);
+  padding:5px 7px; cursor:pointer; transition:all var(--dt-fast) var(--ease);
+}
+.sb-model-chip:hover { border-color:var(--border-2); }
+.sb-model-chip.selected { border-color:rgba(59,130,246,.45); background:var(--blue-dim); }
+.sb-model-chip-name { font-size:10px; font-weight:700; color:var(--txt); }
+.sb-model-chip-desc { font-size:9px; color:var(--txt-3); margin-top:1px; }
+
+.sb-save-btn {
+  width:100%; margin-top:10px; padding:8px 12px;
+  background:linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(263 60% 52%) 100%);
+  border:none; border-radius:var(--r-lg); color:#fff;
+  font-size:12px; font-family:inherit; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  transition:all var(--dt-fast) var(--ease); box-shadow:0 3px 10px rgba(59,130,246,.2);
+}
+.sb-save-btn:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(59,130,246,.3); }
+.sb-save-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
+.sb-test-result {
+  margin-top:7px; padding:7px 10px; border-radius:var(--r-md); font-size:11px; font-weight:500;
+}
+.sb-test-result.ok { background:var(--green-dim); border:1px solid rgba(22,163,74,.25); color:var(--green); }
+.sb-test-result.fail { background:var(--red-dim); border:1px solid rgba(220,38,38,.2); color:var(--red); }
+.sb-test-result.testing { background:var(--blue-dim); border:1px solid rgba(59,130,246,.2); color:var(--blue); }
+
+/* keep badge classes used in old modal still needed nowhere — remove leftovers */
+.badge-default  { background:var(--blue-dim); color:var(--blue); }
+.badge-powerful { background:var(--purple-dim); color:var(--purple); }
+.badge-fast     { background:var(--green-dim); color:var(--green); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   POLICY BADGES  (inline in tool card header)
+══════════════════════════════════════════════════════════════════════ */
+.policy-badge {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  padding:2px 6px; border-radius:var(--r-full); flex-shrink:0;
+  transition:all var(--dt-fast) var(--ease);
+}
+.policy-badge.allow   { background:var(--green-dim);  color:var(--green);  border:1px solid rgba(22,163,74,.25); }
+.policy-badge.deny    { background:var(--red-dim);    color:var(--red);    border:1px solid rgba(220,38,38,.2); }
+.policy-badge.pending { background:var(--amber-dim);  color:var(--amber);  border:1px solid rgba(217,119,6,.25); }
+.policy-badge.approved{ background:var(--green-dim);  color:var(--green);  border:1px solid rgba(22,163,74,.25); }
+.policy-badge.denied  { background:var(--red-dim);    color:var(--red);    border:1px solid rgba(220,38,38,.2); }
+
+.tool-card.sensitive { border-color:rgba(220,38,38,.22); background:linear-gradient(135deg, hsl(0 60% 99%) 0%, hsl(0 72% 98%) 100%); }
+.tool-card.sensitive .tool-fn { color:var(--red); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   APPROVAL CARD
+══════════════════════════════════════════════════════════════════════ */
+.approval-card {
+  background:var(--card); border:1.5px solid rgba(217,119,6,.4);
+  border-radius:var(--r-xl); padding:14px 16px; margin:10px 0;
+  box-shadow:0 4px 18px rgba(217,119,6,.10);
+}
+.approval-card.resolved-approve { border-color:rgba(22,163,74,.4); }
+.approval-card.resolved-deny    { border-color:rgba(220,38,38,.3);  }
+.approval-hdr { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.approval-icon { font-size:18px; }
+.approval-title { font-size:13px; font-weight:700; color:var(--amber); }
+.approval-card.resolved-approve .approval-title { color:var(--green); }
+.approval-card.resolved-deny .approval-title { color:var(--red); }
+.approval-tool-row { display:flex; align-items:baseline; gap:6px; margin-bottom:8px; }
+.approval-tool-name { font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--txt); }
+.approval-tool-args {
+  font-size:10px; color:var(--txt-3); font-family:'JetBrains Mono',monospace;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;
+}
+.approval-blast {
+  font-size:11px; color:var(--txt-2); line-height:1.5;
+  background:var(--amber-dim); border:1px solid rgba(217,119,6,.2);
+  border-radius:var(--r-md); padding:6px 9px; margin-bottom:12px;
+}
+.approval-btns { display:flex; gap:8px; }
+.approval-deny-btn {
+  flex:1; padding:8px; border:1.5px solid rgba(220,38,38,.3); border-radius:var(--r-md);
+  background:var(--red-dim); color:var(--red); font-size:12px; font-weight:700;
+  cursor:pointer; transition:all var(--dt-fast) var(--ease); font-family:inherit;
+}
+.approval-deny-btn:hover { background:hsl(0 72% 95%); border-color:rgba(220,38,38,.5); }
+.approval-approve-btn {
+  flex:2; padding:8px; border:none; border-radius:var(--r-md);
+  background:linear-gradient(135deg, var(--green) 0%, hsl(142 55% 30%) 100%);
+  color:#fff; font-size:12px; font-weight:700;
+  cursor:pointer; transition:all var(--dt-fast) var(--ease); font-family:inherit;
+  box-shadow:0 3px 10px rgba(22,163,74,.25);
+}
+.approval-approve-btn:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(22,163,74,.35); }
+.approval-resolved { font-size:12px; font-weight:600; padding:4px 0; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DEMO CONTROLS SIDEBAR SECTION
+══════════════════════════════════════════════════════════════════════ */
+.sb-demo { padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0; }
+.demo-toggle-btn {
+  width:100%; display:flex; align-items:center; gap:8px;
+  background:var(--red-dim); border:1.5px solid rgba(220,38,38,.3);
+  border-radius:var(--r-lg); padding:7px 10px; cursor:pointer;
+  font-size:11px; font-weight:700; font-family:inherit; color:var(--red);
+  transition:all var(--dt-normal) var(--ease);
+}
+.demo-toggle-btn.on {
+  background:var(--green-dim); border-color:rgba(22,163,74,.35); color:var(--green);
+}
+.demo-toggle-dot {
+  width:10px; height:10px; border-radius:50%; background:var(--red); flex-shrink:0;
+  transition:background var(--dt-normal) var(--ease);
+  box-shadow:0 0 6px rgba(220,38,38,.4);
+}
+.demo-toggle-btn.on .demo-toggle-dot {
+  background:var(--green); box-shadow:0 0 6px rgba(22,163,74,.5);
+}
+.token-chip {
+  display:flex; align-items:center; gap:7px;
+  background:var(--green-dim); border:1px solid rgba(22,163,74,.25);
+  border-radius:var(--r-lg); padding:6px 9px; margin-top:7px;
+}
+.token-dot { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0;
+  box-shadow:0 0 5px rgba(22,163,74,.5); animation:pulse-dot 2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.5} }
+.token-info { flex:1; min-width:0; }
+.token-id-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--green); font-family:'JetBrains Mono',monospace; }
+.token-scope-label { font-size:9px; color:var(--green); opacity:.7; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.token-ttl-label {
+  font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--green); flex-shrink:0;
+  transition:color var(--dt-fast) var(--ease);
+}
+.token-ttl-label.warn { color:var(--amber); }
+.token-ttl-label.crit { color:var(--red); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIT TRAIL SIDEBAR SECTION
+══════════════════════════════════════════════════════════════════════ */
+.sb-audit { padding:10px 16px 14px; border-top:1px solid var(--border); flex-shrink:0; }
+.audit-section-hdr {
+  display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+  font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--txt-4);
+}
+.audit-count-badge {
+  font-size:9px; font-weight:700; padding:1px 5px; border-radius:var(--r-full);
+  background:var(--card-3); color:var(--txt-3); margin-left:2px;
+}
+.audit-chevron { margin-left:auto; color:var(--txt-4); font-size:10px; transition:transform var(--dt-fast); }
+.audit-chevron.open { transform:rotate(90deg); }
+.audit-entries { margin-top:8px; display:flex; flex-direction:column; gap:3px; max-height:220px; overflow-y:auto; }
+.audit-entry {
+  display:flex; align-items:center; gap:5px;
+  padding:4px 7px; border-radius:var(--r-sm); font-size:10px;
+  background:var(--card-2); border:1px solid var(--border);
+}
+.audit-entry .ae-icon { font-size:11px; flex-shrink:0; }
+.audit-entry .ae-tool { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--txt); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.audit-entry .ae-rule { font-size:9px; color:var(--txt-4); flex-shrink:0; }
+.audit-entry.allow  { border-color:rgba(22,163,74,.2); }
+.audit-entry.deny   { background:var(--red-dim); border-color:rgba(220,38,38,.2); }
+.audit-entry.require_approval { background:var(--amber-dim); border-color:rgba(217,119,6,.25); }
+.audit-entry.denied_by_operator { background:var(--red-dim); border-color:rgba(220,38,38,.2); }
+.audit-entry.timeout { background:var(--amber-dim); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRESENTATION MODE  (?mode=presentation)
+   Dark, high-contrast, 1.4× scale — designed for 20-foot projection
+══════════════════════════════════════════════════════════════════════ */
+body.presentation-mode {
+  --bg:        #080C18;
+  --card:      #0D1526;
+  --card-2:    #0A1220;
+  --card-3:    #111E35;
+  --card-4:    #172035;
+  --border:    #1C2D4A;
+  --border-2:  #243552;
+  --border-3:  #2E4575;
+  --txt:       #E4EDFF;
+  --txt-2:     #9DB8E0;
+  --txt-3:     #5C7AAA;
+  --txt-4:     #354F78;
+  --blue:      #4D9FFF;
+  --blue-dim:  rgba(77,159,255,.12);
+  --blue-glow: rgba(77,159,255,.18);
+  --blue-fg:   #4D9FFF;
+  --purple:    #B07EFF;
+  --purple-dim:rgba(176,126,255,.12);
+  --green:     #00E676;
+  --green-dim: rgba(0,230,118,.10);
+  --green-glow:rgba(0,230,118,.18);
+  --amber:     #FFB800;
+  --amber-dim: rgba(255,184,0,.10);
+  --amber-glow:rgba(255,184,0,.18);
+  --red:       #FF3B3B;
+  --red-dim:   rgba(255,59,59,.12);
+  --red-glow:  rgba(255,59,59,.18);
+  --cyan:      #00E5FF;
+  font-size: 16px !important;
+}
+body.presentation-mode .topbar {
+  background: rgba(8,12,24,.92);
+  border-bottom-color: var(--border);
+}
+body.presentation-mode .input-area {
+  background: rgba(8,12,24,.92);
+  border-top-color: var(--border);
+}
+body.presentation-mode .sidebar {
+  background: var(--card);
+  border-right-color: var(--border);
+}
+body.presentation-mode body::before {
+  background:
+    radial-gradient(ellipse at 5% 0%, rgba(77,159,255,.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 95% 100%, rgba(176,126,255,.05) 0%, transparent 55%);
+}
+body.presentation-mode .tool-result {
+  font-size: 13px;
+}
+body.presentation-mode .agent-md {
+  font-size: 16px;
+}
+body.presentation-mode .msg-user-bubble {
+  font-size: 16px;
+}
+body.presentation-mode .stat-num {
+  font-size: 28px;
+}
+body.presentation-mode .approval-card {
+  border-width: 2px;
+}
+/* Presentation mode toggle button */
+.pm-toggle-btn {
+  display:flex; align-items:center; gap:5px; padding:5px 10px;
+  background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-lg); cursor:pointer; font-size:11px;
+  font-family:inherit; font-weight:600; color:var(--txt-3);
+  transition:all var(--dt-fast) var(--ease);
+}
+.pm-toggle-btn:hover { border-color:var(--border-2); color:var(--txt-2); }
+body.presentation-mode .pm-toggle-btn {
+  background: rgba(77,159,255,.1); border-color:rgba(77,159,255,.4); color:var(--blue);
+}
+/* Replay dropdown */
+.replay-menu-wrap { position:relative; }
+.replay-dropdown {
+  position:absolute; top:calc(100% + 6px); right:0; min-width:220px;
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  box-shadow:var(--s3); z-index:999; overflow:hidden;
+  animation:fadeUp .15s var(--ease) both;
+}
+.replay-dropdown-item {
+  padding:9px 14px; font-size:12px; font-weight:500; cursor:pointer;
+  color:var(--txt-2); transition:background var(--dt-micro);
+}
+.replay-dropdown-item:hover { background:var(--card-2); color:var(--txt); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DANGER MODE  (security_on=false)
+   Full-screen alert that something dangerous is happening
+══════════════════════════════════════════════════════════════════════ */
+.danger-banner {
+  display:none; position:fixed; top:0; left:0; right:0; z-index:9997;
+  padding:9px 24px; text-align:center;
+  background:linear-gradient(90deg, #7B0000 0%, #C00000 50%, #7B0000 100%);
+  color:#fff; font-size:12px; font-weight:800; letter-spacing:.12em;
+  text-transform:uppercase; user-select:none;
+  animation:danger-banner-pulse 1.5s ease-in-out infinite;
+}
+@keyframes danger-banner-pulse {
+  0%,100% { background:linear-gradient(90deg,#7B0000 0%,#C00000 50%,#7B0000 100%); }
+  50%      { background:linear-gradient(90deg,#B00000 0%,#FF3B3B 50%,#B00000 100%); }
+}
+body.danger-mode .danger-banner { display:block; }
+body.danger-mode .app { margin-top:37px; }
+
+body.danger-mode::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9998;
+  border:3px solid rgba(255,59,59,.7); border-radius:0;
+  animation:danger-border-pulse 1.5s ease-in-out infinite;
+}
+@keyframes danger-border-pulse {
+  0%,100% { border-color:rgba(255,59,59,.4); box-shadow:inset 0 0 40px rgba(255,59,59,.06); }
+  50%      { border-color:rgba(255,59,59,.85); box-shadow:inset 0 0 80px rgba(255,59,59,.14); }
+}
+/* Tool cards in danger mode show UNCONTROLLED badge */
+body.danger-mode .tool-card.write::before,
+body.danger-mode .tool-card.sensitive::before {
+  background: var(--red) !important;
+  animation: danger-border-pulse 1s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SERVICE TOPOLOGY MAP
+══════════════════════════════════════════════════════════════════════ */
+.topology-panel {
+  border-bottom:1px solid var(--border); flex-shrink:0;
+  background:var(--card); overflow:hidden;
+  max-height:0; transition:max-height .4s var(--ease-expo);
+}
+.topology-panel.open { max-height:260px; }
+.topology-inner { padding:12px 24px 10px; max-width:820px; margin:0 auto; }
+.topology-hdr {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+}
+.topology-title {
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--txt-4);
+  display:flex; align-items:center; gap:8px;
+}
+.topology-legend {
+  display:flex; align-items:center; gap:12px; font-size:9px; font-weight:600; color:var(--txt-4);
+}
+.topo-legend-dot {
+  width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:3px;
+}
+.topo-close-btn {
+  background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px 4px;
+  border-radius:var(--r-sm); font-size:12px; transition:color var(--dt-fast) var(--ease);
+}
+.topo-close-btn:hover { color:var(--txt-2); }
+#topology-svg { width:100%; height:200px; }
+
+/* SVG node states */
+.topo-node { cursor:default; }
+.topo-node-circle {
+  fill: var(--card-2); stroke: var(--border-2); stroke-width: 1.5;
+  transition: fill .3s ease, stroke .3s ease;
+}
+.topo-node.healthy   .topo-node-circle { fill:rgba(0,230,118,.08);  stroke:#00E676; }
+.topo-node.warning   .topo-node-circle { fill:rgba(255,184,0,.08);  stroke:#FFB800; }
+.topo-node.critical  .topo-node-circle { fill:rgba(255,59,59,.12);  stroke:#FF3B3B; }
+.topo-node.target    .topo-node-circle {
+  fill:rgba(255,59,59,.18); stroke:#FF3B3B; stroke-width:2.5;
+  animation: topo-pulse-red 1s ease-in-out infinite;
+}
+.topo-node.blast     .topo-node-circle {
+  fill:rgba(255,184,0,.12); stroke:#FFB800; stroke-width:2;
+  animation: topo-pulse-amber 1.2s ease-in-out infinite;
+}
+@keyframes topo-pulse-red {
+  0%,100% { filter:drop-shadow(0 0 4px rgba(255,59,59,.4)); }
+  50%      { filter:drop-shadow(0 0 12px rgba(255,59,59,.8)); }
+}
+@keyframes topo-pulse-amber {
+  0%,100% { filter:drop-shadow(0 0 3px rgba(255,184,0,.3)); }
+  50%      { filter:drop-shadow(0 0 10px rgba(255,184,0,.7)); }
+}
+.topo-node-label {
+  font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:600;
+  fill: var(--txt-3); text-anchor:middle;
+}
+.topo-node.healthy .topo-node-label  { fill: #00E676; }
+.topo-node.warning .topo-node-label  { fill: #FFB800; }
+.topo-node.critical .topo-node-label { fill: #FF3B3B; }
+.topo-node.target  .topo-node-label  { fill: #FF3B3B; }
+.topo-node.blast   .topo-node-label  { fill: #FFB800; }
+
+.topo-edge {
+  stroke: var(--border-2); stroke-width:1.5; fill:none; opacity:0.5;
+  transition: stroke .3s ease, stroke-width .3s ease, opacity .3s ease;
+  marker-end:url(#arrow);
+}
+.topo-edge.active {
+  stroke:#FF3B3B; stroke-width:2; opacity:0.8;
+  stroke-dasharray:6 4;
+  animation: edge-flow 0.8s linear infinite;
+}
+.topo-edge.blast {
+  stroke:#FFB800; stroke-width:2; opacity:0.7;
+  stroke-dasharray:6 4;
+  animation: edge-flow 1s linear infinite;
+}
+@keyframes edge-flow { to { stroke-dashoffset: -10; } }
+
+/* Topology toggle button in topbar */
+.topo-toggle-btn {
+  display:flex; align-items:center; gap:5px; padding:5px 10px;
+  background:var(--card-2); border:1px solid var(--border);
+  border-radius:var(--r-lg); cursor:pointer; font-size:11px;
+  font-family:inherit; font-weight:600; color:var(--txt-3);
+  transition:all var(--dt-fast) var(--ease);
+}
+.topo-toggle-btn:hover { border-color:var(--border-2); color:var(--txt-2); }
+.topo-toggle-btn.active { background:var(--blue-dim); border-color:rgba(77,159,255,.4); color:var(--blue); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   INCIDENT TIMER
+══════════════════════════════════════════════════════════════════════ */
+.incident-timer {
+  display:none; align-items:center; gap:7px; padding:5px 12px;
+  background:rgba(255,59,59,.1); border:1px solid rgba(255,59,59,.3);
+  border-radius:var(--r-full); font-size:12px; color:var(--red); font-weight:700;
+  animation: incident-timer-pulse 2s ease-in-out infinite;
+}
+.incident-timer.active { display:flex; }
+@keyframes incident-timer-pulse {
+  0%,100% { border-color:rgba(255,59,59,.3); background:rgba(255,59,59,.08); }
+  50%      { border-color:rgba(255,59,59,.6); background:rgba(255,59,59,.15); }
+}
+.incident-timer-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--red);
+  animation:pulse-r 1s ease-in-out infinite; flex-shrink:0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ENHANCED APPROVAL MODAL  (with countdown + topology inline)
+══════════════════════════════════════════════════════════════════════ */
+.approval-countdown-row {
+  display:flex; align-items:center; gap:10px; margin-bottom:12px;
+}
+.approval-countdown-bar-wrap {
+  flex:1; height:5px; background:var(--card-3); border-radius:var(--r-full); overflow:hidden;
+}
+.approval-countdown-bar {
+  height:100%; border-radius:var(--r-full);
+  background:linear-gradient(90deg,var(--amber),rgba(217,119,6,.5));
+  transition:width 1s linear, background .5s ease;
+}
+.approval-countdown-bar.urgent { background:linear-gradient(90deg,var(--red),rgba(220,38,38,.5)); }
+.approval-countdown-num {
+  font-size:13px; font-weight:800; font-family:'JetBrains Mono',monospace;
+  color:var(--amber); min-width:32px; text-align:right; flex-shrink:0;
+  transition:color .3s ease;
+}
+.approval-countdown-num.urgent { color:var(--red); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOKEN MINTED CARD  (animated, with progress bar)
+══════════════════════════════════════════════════════════════════════ */
+.token-minted-card {
+  background:var(--card); border:1.5px solid rgba(0,230,118,.35);
+  border-radius:var(--r-xl); padding:12px 14px; margin:8px 0;
+  animation: token-appear .35s var(--ease-spring) both;
+  position:relative; overflow:hidden;
+}
+.token-minted-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--green), rgba(0,230,118,.3));
+}
+@keyframes token-appear {
+  from { opacity:0; transform:translateY(-6px) scale(.97); }
+  to   { opacity:1; transform:none; }
+}
+.token-minted-hdr { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.token-minted-icon {
+  width:28px; height:28px; border-radius:var(--r-md); background:rgba(0,230,118,.12);
+  display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;
+}
+.token-minted-title { font-size:12px; font-weight:700; color:var(--green); }
+.token-minted-id { font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--txt-3); margin-top:1px; }
+.token-minted-scope { font-size:11px; color:var(--txt-2); margin-bottom:8px; font-family:'JetBrains Mono',monospace; }
+.token-ttl-bar-wrap {
+  display:flex; align-items:center; gap:8px;
+}
+.token-ttl-bar-track {
+  flex:1; height:4px; background:var(--card-3); border-radius:var(--r-full); overflow:hidden;
+}
+.token-ttl-bar {
+  height:100%; background:var(--green); border-radius:var(--r-full);
+  transition: width 1s linear, background .5s ease;
+}
+.token-ttl-bar.warn { background:var(--amber); }
+.token-ttl-bar.crit { background:var(--red); }
+.token-ttl-secs {
+  font-size:11px; font-weight:700; font-family:'JetBrains Mono',monospace;
+  color:var(--green); min-width:38px; text-align:right;
+}
+.token-ttl-secs.warn { color:var(--amber); }
+.token-ttl-secs.crit { color:var(--red); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   RECOVERY CELEBRATION
+══════════════════════════════════════════════════════════════════════ */
+.recovery-overlay {
+  position:fixed; inset:0; z-index:9995; pointer-events:none;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .3s ease;
+}
+.recovery-overlay.show { opacity:1; }
+.recovery-card {
+  background:rgba(0,230,118,.12); border:2px solid rgba(0,230,118,.5);
+  border-radius:var(--r-2xl); padding:28px 48px; text-align:center;
+  backdrop-filter:blur(16px); box-shadow:0 0 60px rgba(0,230,118,.2);
+  animation: recovery-pop .5s var(--ease-spring) both;
+}
+@keyframes recovery-pop {
+  from { transform:scale(.85); opacity:0; }
+  to   { transform:none; opacity:1; }
+}
+.recovery-emoji { font-size:44px; margin-bottom:10px; }
+.recovery-title { font-size:22px; font-weight:800; color:var(--green); letter-spacing:-.02em; margin-bottom:4px; }
+.recovery-sub   { font-size:14px; color:var(--txt-2); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIT TRAIL ENHANCED  (timeline style)
+══════════════════════════════════════════════════════════════════════ */
+.audit-entry .ae-ts {
+  font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--txt-4); flex-shrink:0;
+  white-space:nowrap;
+}
+.audit-entry .ae-dur {
+  font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--txt-4); flex-shrink:0;
+}
+.audit-entry.deny .ae-tool { color:var(--red); }
+.audit-entry.require_approval .ae-tool { color:var(--amber); }
+
+/* Audit trail auto-open in presentation mode */
+body.presentation-mode .audit-entries { max-height:320px; }
+</style>
+</head>
+<body>
+
+<!-- ── DANGER MODE BANNER ────────────────────────────────────────────── -->
+<div class="danger-banner" id="danger-banner">
+  ⚠ POLICY DISABLED — ALL TOOLS PERMITTED — UNCONTROLLED AGENT ACTIVE ⚠
+</div>
+
+<!-- ── RECOVERY OVERLAY ─────────────────────────────────────────────── -->
+<div class="recovery-overlay" id="recovery-overlay">
+  <div class="recovery-card">
+    <div class="recovery-emoji">✅</div>
+    <div class="recovery-title" id="recovery-title">Cluster Restored</div>
+    <div class="recovery-sub" id="recovery-sub">All services healthy · All alerts cleared</div>
+  </div>
+</div>
+
+<div class="app">
+
+<!-- ════════════════════════ SIDEBAR ════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="brand-row">
+      <div class="brand-glyph">⚡</div>
+      <div class="brand-text-wrap">
+        <div class="brand-title">MCP Incident Agent</div>
+        <div class="brand-sub">Kubernetes Intelligence Layer</div>
+      </div>
+    </div>
+    <button class="new-chat" onclick="newChat()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New conversation
+    </button>
+  </div>
+
+  <!-- cluster + switcher -->
+  <div class="sb-cluster">
+    <div class="sb-section-label">
+      Cluster
+      <span id="sb-status-text" style="font-size:10px;font-weight:500;color:var(--txt-3);text-transform:none;letter-spacing:0">Connecting…</span>
+    </div>
+
+    <!-- cluster switcher row -->
+    <div class="cluster-switcher-row" id="cluster-switcher-wrap">
+      <button class="cluster-sel-btn" id="cluster-sel-btn" onclick="toggleClusterMenu()">
+        <div class="status-dot unknown" id="sb-dot"></div>
+        <span class="cluster-name-text" id="active-cluster-display">Loading…</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <!-- dropdown -->
+      <div class="cluster-dropdown" id="cluster-dropdown">
+        <div class="no-clusters-msg">Loading clusters…</div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card run">
+        <div class="stat-num" id="s-run">—</div>
+        <div class="stat-label">Running</div>
+      </div>
+      <div class="stat-card crash">
+        <div class="stat-num" id="s-crash">—</div>
+        <div class="stat-label">Crashing</div>
+      </div>
+      <div class="stat-card pend">
+        <div class="stat-num" id="s-pend">—</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card depl">
+        <div class="stat-num" id="s-depl">—</div>
+        <div class="stat-label">Healthy</div>
+      </div>
+    </div>
+    <div class="health-bar">
+      <div class="hb-seg hb-run"   id="hb-run"   style="width:0%"></div>
+      <div class="hb-seg hb-crash" id="hb-crash" style="width:0%"></div>
+      <div class="hb-seg hb-pend"  id="hb-pend"  style="width:0%"></div>
+    </div>
+    <a class="grafana-btn" id="grafana-btn" href="http://localhost:3000" target="_blank">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span id="grafana-btn-label">Grafana Dashboards</span>
+      <svg class="ext-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </a>
+  </div>
+
+  <!-- alerts -->
+  <div class="sb-alerts">
+    <div class="sb-section-label">
+      Firing Alerts
+      <span class="alert-count-pill" id="alert-pill">0</span>
+    </div>
+    <div id="alert-list">
+      <div class="no-alerts-msg">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Checking alerts…
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Engine -->
+  <div class="sb-ai" id="sb-ai">
+    <div class="sb-section-label">
+      AI Engine
+      <span id="sb-ai-status-pill" class="ai-status-pill not-connected">not connected</span>
+    </div>
+
+    <!-- connected view (hidden when not connected) -->
+    <div id="sb-ai-connected" style="display:none">
+      <div class="ai-connected-card">
+        <div class="ai-conn-dot"></div>
+        <div class="ai-conn-details">
+          <div class="ai-conn-provider" id="sb-conn-provider">—</div>
+          <div class="ai-conn-model" id="sb-conn-model">—</div>
+        </div>
+        <button class="ai-reconfig-btn" id="sb-reconfig-btn" onclick="sbShowForm()" title="Reconfigure">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- config form (shown when not connected or reconfiguring) -->
+    <div id="sb-ai-form">
+      <!-- provider pills -->
+      <div class="sb-ai-label">Provider</div>
+      <div id="sb-provider-grid" class="sb-provider-grid">
+        <!-- rendered by JS from PROVIDER_REGISTRY -->
+      </div>
+
+      <!-- key input -->
+      <div class="sb-ai-label">API Key</div>
+      <div class="sb-key-row">
+        <input type="password" id="sb-key-input" class="sb-key-input"
+          placeholder="Paste your API key…" oninput="sbOnKeyInput()" autocomplete="off" spellcheck="false">
+        <button class="sb-eye-btn" onclick="sbToggleKey()">👁</button>
+      </div>
+      <div id="sb-key-badge" class="sb-key-badge" style="display:none"></div>
+
+      <!-- base URL (Custom provider only) -->
+      <div class="sb-ai-label" id="sb-base-url-label" style="display:none">Base URL</div>
+      <input type="text" id="sb-base-url-input" class="sb-key-input"
+        placeholder="https://api.together.xyz/v1" style="display:none" autocomplete="off" spellcheck="false">
+
+      <!-- model chips (registered providers) -->
+      <div class="sb-ai-label" id="sb-model-label" style="display:none">Model</div>
+      <div id="sb-model-grid" class="sb-model-grid" style="display:none"></div>
+
+      <!-- free-text model (Custom provider) -->
+      <div class="sb-ai-label" id="sb-custom-model-label" style="display:none">Model ID</div>
+      <input type="text" id="sb-custom-model-input" class="sb-key-input"
+        placeholder="e.g. meta-llama/Llama-3-70b-chat-hf" style="display:none" autocomplete="off" spellcheck="false">
+
+      <!-- save & test -->
+      <button class="sb-save-btn" id="sb-save-btn" onclick="sbSaveAndTest()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save &amp; Test
+      </button>
+      <div class="sb-test-result" id="sb-test-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- demo controls -->
+  <div class="sb-demo" id="sb-demo">
+    <div class="sb-section-label">Demo Controls</div>
+    <button class="demo-toggle-btn" id="demo-toggle-btn" onclick="toggleSecurity()">
+      <div class="demo-toggle-dot"></div>
+      <span id="demo-toggle-label">Policy Gates: OFF</span>
+    </button>
+    <div id="token-chip" class="token-chip" style="display:none">
+      <div class="token-dot"></div>
+      <div class="token-info">
+        <div class="token-id-label" id="token-id-label">tok-xxxxxxxx</div>
+        <div class="token-scope-label" id="token-scope-label">production:read,restart</div>
+      </div>
+      <div class="token-ttl-label" id="token-ttl-label">5:00</div>
+    </div>
+  </div>
+
+  <!-- audit trail -->
+  <div class="sb-audit" id="sb-audit">
+    <div class="audit-section-hdr" onclick="toggleAudit()">
+      Audit Trail
+      <span class="audit-count-badge" id="audit-count">0</span>
+      <span class="audit-chevron" id="audit-chevron">▶</span>
+    </div>
+    <div class="audit-entries" id="audit-entries" style="display:none"></div>
+  </div>
+
+  <!-- history -->
+  <div class="sb-history">
+    <div class="sb-section-label" style="padding:0 2px;margin-bottom:8px">History</div>
+    <div id="conv-list"></div>
+  </div>
+</aside>
+
+<!-- ════════════════════════ MAIN ══════════════════════════════════ -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="cluster-chip">
+        <div class="status-dot unknown" id="top-dot"></div>
+        <span id="top-status">Connecting…</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- Incident timer — visible when alerts are firing -->
+      <div class="incident-timer" id="incident-timer">
+        <div class="incident-timer-dot"></div>
+        <span id="incident-timer-label">Incident: 0:00</span>
+      </div>
+
+      <div class="stream-pill" id="stream-pill">
+        <div class="dots"><span></span><span></span><span></span></div>
+        Analyzing cluster
+      </div>
+
+      <!-- Topology map toggle -->
+      <button class="topo-toggle-btn" id="topo-toggle-btn" onclick="toggleTopology()" title="Service Topology Map">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Topology
+      </button>
+
+      <!-- Presentation mode toggle -->
+      <button class="pm-toggle-btn" id="pm-toggle-btn" onclick="togglePresentationMode()" title="Toggle presentation mode">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Stage
+      </button>
+
+      <!-- Replay dropdown — pre-recorded scenarios for offline/rehearsal -->
+      <div class="replay-menu-wrap" id="replay-menu-wrap">
+        <button class="pm-toggle-btn" onclick="toggleReplayMenu()" title="Play a recorded demo scenario">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Replay
+        </button>
+        <div class="replay-dropdown" id="replay-dropdown" style="display:none">
+          <div class="replay-dropdown-item" onclick="triggerReplay('cascade')">⚡ Cascade OOM incident</div>
+          <div class="replay-dropdown-item" onclick="triggerReplay('dangerous-agent')">☠ Dangerous agent (no policy)</div>
+        </div>
+      </div>
+
+      <div class="ai-status-indicator" id="ai-status-btn">
+        <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>
+        <span id="ai-status-label">Connect AI</span>
+      </div>
+      <button class="topbar-btn ghost-red" onclick="clearChat()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SERVICE TOPOLOGY MAP ─────────────────────────────────────── -->
+  <div class="topology-panel" id="topology-panel">
+    <div class="topology-inner">
+      <div class="topology-hdr">
+        <div class="topology-title">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Production Service Topology
+          <span id="topo-status-label" style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--txt-4);font-size:9px"></span>
+        </div>
+        <div class="topology-legend">
+          <span><span class="topo-legend-dot" style="background:#00E676"></span>healthy</span>
+          <span><span class="topo-legend-dot" style="background:#FFB800"></span>warning</span>
+          <span><span class="topo-legend-dot" style="background:#FF3B3B"></span>critical</span>
+          <span><span class="topo-legend-dot" style="background:#FF3B3B;animation:topo-pulse-red 1s infinite"></span>blast target</span>
+        </div>
+        <button class="topo-close-btn" onclick="toggleTopology()">✕</button>
+      </div>
+      <svg id="topology-svg" viewBox="0 0 560 185" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="var(--border-2)"/>
+          </marker>
+          <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#FF3B3B"/>
+          </marker>
+          <marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#FFB800"/>
+          </marker>
+        </defs>
+        <!-- Edges (drawn first so nodes appear on top) -->
+        <line class="topo-edge" id="edge-tg-os"  x1="280" y1="38"  x2="280" y2="72"/>
+        <line class="topo-edge" id="edge-os-ps"  x1="255" y1="98"  x2="165" y2="135"/>
+        <line class="topo-edge" id="edge-os-ns"  x1="305" y1="98"  x2="395" y2="135"/>
+        <line class="topo-edge" id="edge-ps-as"  x1="140" y1="163" x2="140" y2="155" style="display:none"/>
+        <line class="topo-edge" id="edge-ns-eg"  x1="420" y1="163" x2="420" y2="155" style="display:none"/>
+
+        <!-- traffic-gen -->
+        <g class="topo-node" id="tnode-traffic-gen">
+          <circle class="topo-node-circle" cx="280" cy="22" r="18"/>
+          <text class="topo-node-label" x="280" y="26">traffic-gen</text>
+        </g>
+        <!-- order-service -->
+        <g class="topo-node" id="tnode-order-service">
+          <circle class="topo-node-circle" cx="280" cy="86" r="22"/>
+          <text class="topo-node-label" x="280" y="90">order-svc</text>
+        </g>
+        <!-- payment-service -->
+        <g class="topo-node" id="tnode-payment-service">
+          <circle class="topo-node-circle" cx="140" cy="150" r="22"/>
+          <text class="topo-node-label" x="140" y="154">payment</text>
+        </g>
+        <!-- notification-service -->
+        <g class="topo-node" id="tnode-notification-service">
+          <circle class="topo-node-circle" cx="420" cy="150" r="22"/>
+          <text class="topo-node-label" x="420" y="154">notif</text>
+        </g>
+        <!-- auth-service (small, below payment) -->
+        <text class="topo-node-label" x="68" y="154" style="fill:var(--txt-4);font-size:8px">→ auth-svc</text>
+        <!-- email-gateway (small, below notification) -->
+        <text class="topo-node-label" x="463" y="154" style="fill:var(--txt-4);font-size:8px">→ email-gw</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="msgs-inner" id="msgs-inner">
+      <div id="empty-state" class="empty">
+        <div class="empty-hero">
+          <div class="empty-glyph">⚡</div>
+          <div class="empty-title">Ask anything about your cluster</div>
+          <div class="empty-sub">Real-time Kubernetes intelligence — diagnose incidents, trace root causes, and act in natural language.</div>
+        </div>
+        <div class="ai-callout" id="ai-callout">
+          <div class="ai-callout-icon">🔑</div>
+          <div class="ai-callout-body">
+            <div class="ai-callout-title">AI not connected</div>
+            <div class="ai-callout-desc">Add your Anthropic API key to start chatting with your cluster.</div>
+          </div>
+          <button class="ai-callout-btn" onclick="sbShowForm();$('sb-ai-form').scrollIntoView({behavior:'smooth'})">Configure AI →</button>
+        </div>
+        <div class="prompts-grid">
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well blue">🩺</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Full cluster health check</div>
+              <div class="prompt-desc">What's the current state of all production services?</div>
+            </div>
+          </div>
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well red">🔴</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Why is payment-service failing?</div>
+              <div class="prompt-desc">Diagnose errors, crashes, and root cause.</div>
+            </div>
+          </div>
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well amber">🔄</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Pods restarting in the last hour</div>
+              <div class="prompt-desc">Find every CrashLoop and OOMKill with context.</div>
+            </div>
+          </div>
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well purple">🌊</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Is there a retry storm?</div>
+              <div class="prompt-desc">Check email-gateway rate limits and notification retries.</div>
+            </div>
+          </div>
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well green">📊</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Memory and CPU hotspots</div>
+              <div class="prompt-desc">Which pods are consuming the most resources?</div>
+            </div>
+          </div>
+          <div class="prompt-card" onclick="usePrompt(this)">
+            <div class="prompt-icon-well cyan">🏥</div>
+            <div class="prompt-body">
+              <div class="prompt-title">Walk me through the cascade incident</div>
+              <div class="prompt-desc">OOM + retry storm + cert expiry — full blast radius.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-card">
+      <textarea id="input" placeholder="Ask about your cluster…" rows="1"
+        onkeydown="onKey(event)" oninput="autoResize(this);updateSendBtn()"></textarea>
+      <button class="send-btn" id="send-btn" onclick="send()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="input-footer">
+      <div class="input-hint">
+        <span class="kbd">↵</span> send &nbsp;·&nbsp;
+        <span class="kbd">⇧↵</span> newline &nbsp;·&nbsp;
+        <span class="kbd">⌘K</span> focus
+      </div>
+      <div class="input-model-tag" id="model-tag">claude-sonnet-4-6 · live cluster · Prometheus</div>
+    </div>
+  </div>
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const TOOL_ICONS = {
+  list_pods:'🫙', get_pod_logs:'📋', describe_pod:'🔍', get_deployments:'🚀',
+  get_events:'⚡', get_node_status:'💻', get_hpa_status:'⚖️',
+  prometheus_query:'📊', prometheus_range:'📈', get_alerts:'🔔',
+  list_secrets:'🔑',
+  restart_deployment:'🔄', scale_deployment:'📐',
+};
+const WRITE_TOOLS     = new Set(['restart_deployment','scale_deployment']);
+const SENSITIVE_TOOLS = new Set(['list_secrets']);
+const METRIC_TOOLS    = new Set(['prometheus_query','prometheus_range']);
+const LS_KEY      = 'mcp_agent_api_key';
+const LS_MODEL    = 'mcp_agent_model';
+const LS_BASE_URL = 'mcp_agent_base_url';
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let streaming = false;
+let msgs = [];
+let convs = [];
+let activeConv = null;
+let savedKey     = '';
+let savedModel   = DEFAULT_MODEL;
+let savedBaseUrl = '';
+let availableContexts = [];
+let activeContext = '';
+
+// ── Marked ────────────────────────────────────────────────────────────────────
+if (typeof marked !== 'undefined') {
+  const r = new marked.Renderer();
+  r.code = (code, lang) => {
+    const hl = (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang))
+      ? hljs.highlight(code, {language: lang}).value
+      : (typeof hljs !== 'undefined' ? hljs.highlightAuto(code).value : esc(code));
+    return `<pre><code class="hljs ${lang||''}">${hl}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>`;
+  };
+  marked.setOptions({renderer: r, gfm: true, breaks: true});
+}
+const renderMd = t => {
+  if (typeof marked !== 'undefined') try { return marked.parse(t); } catch(_) {}
+  return `<p>${esc(t).replace(/\n/g,'<br>')}</p>`;
+};
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const $ = id => document.getElementById(id);
+
+// ── Input helpers ─────────────────────────────────────────────────────────────
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; }
+function updateSendBtn() { $('send-btn').disabled = !$('input').value.trim() || streaming; }
+function onKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }
+function usePrompt(card) {
+  const title = card.querySelector('.prompt-title').textContent;
+  $('input').value = title; autoResize($('input')); updateSendBtn(); send();
+}
+document.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();$('input').focus();}
+  if(e.key==='Escape'){ closeClusterMenu(); }
+});
+// close cluster menu on outside click
+document.addEventListener('click', e => {
+  const wrap = $('cluster-switcher-wrap');
+  if (wrap && !wrap.contains(e.target)) closeClusterMenu();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MULTI-CLUSTER
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function loadClusters() {
+  try {
+    const data = await (await fetch('/api/clusters')).json();
+    availableContexts = data.contexts || [];
+    activeContext = data.active || '';
+    renderClusterDropdown();
+    updateClusterDisplay(activeContext);
+  } catch(e) {
+    $('cluster-dropdown').innerHTML = '<div class="no-clusters-msg">Could not load clusters</div>';
+  }
+}
+
+function renderClusterDropdown() {
+  const el = $('cluster-dropdown');
+  if (!availableContexts.length) {
+    el.innerHTML = '<div class="no-clusters-msg">No clusters found</div>';
+    return;
+  }
+  el.innerHTML = availableContexts.map(ctx => {
+    const isActive = ctx === activeContext;
+    return `<div class="cluster-item ${isActive?'active':''}" onclick="switchCluster('${esc(ctx)}')">
+      <div class="cluster-item-dot"></div>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ctx)}</span>
+      ${isActive ? '<span class="cluster-item-check">✓</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateClusterDisplay(ctx) {
+  const display = $('active-cluster-display');
+  const topStatus = $('top-status');
+  if (display) display.textContent = ctx || 'No cluster';
+  if (topStatus && ctx) {
+    const label = {'healthy':'Healthy','degraded':'Degraded','critical':'Critical'}[lastClusterStatus] || 'Connected';
+    topStatus.textContent = `${label} · ${ctx.replace('kind-','').replace('kind_','')}`;
+  }
+}
+
+function toggleClusterMenu() {
+  const dropdown = $('cluster-dropdown');
+  const btn = $('cluster-sel-btn');
+  const isOpen = dropdown.classList.contains('open');
+  if (isOpen) {
+    dropdown.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    dropdown.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+function closeClusterMenu() {
+  $('cluster-dropdown').classList.remove('open');
+  $('cluster-sel-btn').classList.remove('open');
+}
+
+async function switchCluster(context) {
+  if (context === activeContext) { closeClusterMenu(); return; }
+  closeClusterMenu();
+  toast(`Switching to ${context}…`);
+  try {
+    const res = await fetch('/api/clusters/switch', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({context}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      activeContext = context;
+      renderClusterDropdown();
+      updateClusterDisplay(context);
+      refreshCluster();
+      toast(`✓ Switched to ${context}`);
+    } else {
+      toast(`Failed: ${data.detail || 'unknown error'}`);
+    }
+  } catch(e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+let lastClusterStatus = 'unknown';
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AI SETTINGS — SIDEBAR
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Sidebar AI state
+let sbSelectedProvider = null;
+let sbSelectedModelId = null;
+
+function loadSavedCredentials() {
+  savedKey     = localStorage.getItem(LS_KEY)      || '';
+  savedModel   = localStorage.getItem(LS_MODEL)    || DEFAULT_MODEL;
+  savedBaseUrl = localStorage.getItem(LS_BASE_URL) || '';
+  updateAIStatusButton();
+  updateModelTag();
+  sbInitAI();
+}
+
+function sbInitAI() {
+  // Render provider pills from registry
+  const grid = $('sb-provider-grid');
+  grid.innerHTML = PROVIDER_REGISTRY.map(p => `
+    <div class="sb-provider-pill" data-pid="${p.id}" onclick="sbPickProvider('${p.id}')">
+      <div class="sb-provider-pill-icon" style="background:${p.iconBg}">${p.icon}</div>
+      <span class="sb-provider-pill-name">${p.name}</span>
+    </div>`).join('');
+
+  // If key already saved, detect provider and show connected state
+  if (savedKey) {
+    const prov = detectProvider(savedKey);
+    sbShowConnected(prov);
+  }
+}
+
+function sbPickProvider(pid) {
+  sbSelectedProvider = PROVIDER_REGISTRY.find(p => p.id === pid);
+  document.querySelectorAll('.sb-provider-pill').forEach(el => {
+    el.classList.toggle('selected', el.dataset.pid === pid);
+  });
+  if (!sbSelectedProvider) return;
+
+  const isCustom = !!sbSelectedProvider.isCustom;
+
+  // Base URL fields — only for Custom
+  $('sb-base-url-label').style.display  = isCustom ? 'block' : 'none';
+  $('sb-base-url-input').style.display  = isCustom ? 'block' : 'none';
+  // Custom model text input vs. preset chips
+  $('sb-custom-model-label').style.display = isCustom ? 'block' : 'none';
+  $('sb-custom-model-input').style.display  = isCustom ? 'block' : 'none';
+
+  if (isCustom) {
+    $('sb-key-input').placeholder = 'Paste your API key…';
+    $('sb-model-label').style.display = 'none';
+    $('sb-model-grid').style.display  = 'none';
+  } else {
+    $('sb-key-input').placeholder = (sbSelectedProvider.models[0]?.id.slice(0,8) || '') + '… · paste your key';
+    sbRenderModels(sbSelectedProvider);
+  }
+}
+
+function sbOnKeyInput() {
+  const val = $('sb-key-input').value.trim();
+  const badge = $('sb-key-badge');
+  const field = $('sb-key-input');
+
+  if (!val) {
+    badge.style.display = 'none';
+    field.className = 'sb-key-input';
+    return;
+  }
+
+  const prov = detectProvider(val);
+  if (prov) {
+    sbPickProvider(prov.id);
+    badge.className = 'sb-key-badge ok';
+    badge.style.display = 'inline-flex';
+    badge.textContent = '✓ ' + prov.name + ' detected';
+    field.className = 'sb-key-input valid';
+  } else {
+    badge.className = 'sb-key-badge warn';
+    badge.style.display = 'inline-flex';
+    badge.textContent = '? Unknown provider';
+    field.className = 'sb-key-input';
+  }
+}
+
+function sbToggleKey() {
+  const f = $('sb-key-input');
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+function sbRenderModels(prov) {
+  const grid = $('sb-model-grid');
+  const label = $('sb-model-label');
+  if (!prov || !prov.models.length) {
+    grid.style.display = 'none'; label.style.display = 'none'; return;
+  }
+  grid.style.display = 'grid'; label.style.display = 'block';
+  const currentSel = sbSelectedModelId || prov.models[0].id;
+  grid.innerHTML = prov.models.map(m => `
+    <div class="sb-model-chip${m.id === currentSel ? ' selected' : ''}"
+         data-mid="${m.id}" onclick="sbPickModel('${m.id}')">
+      <div class="sb-model-chip-name">${m.name}</div>
+      <div class="sb-model-chip-desc">${m.desc}</div>
+    </div>`).join('');
+  if (!sbSelectedModelId) sbSelectedModelId = prov.models[0].id;
+}
+
+function sbPickModel(mid) {
+  sbSelectedModelId = mid;
+  document.querySelectorAll('.sb-model-chip').forEach(el => {
+    el.classList.toggle('selected', el.dataset.mid === mid);
+  });
+}
+
+async function sbSaveAndTest() {
+  const key = $('sb-key-input').value.trim();
+  if (!key) { sbSetResult('fail', 'Paste your API key first'); return; }
+
+  const isCustom = sbSelectedProvider?.isCustom;
+  const baseUrl  = isCustom ? ($('sb-base-url-input').value.trim()) : '';
+  if (isCustom && !baseUrl) { sbSetResult('fail', 'Enter a Base URL for the custom endpoint'); return; }
+
+  const customModelVal = isCustom ? ($('sb-custom-model-input').value.trim()) : '';
+  const model = customModelVal || sbSelectedModelId || (sbSelectedProvider?.models[0]?.id) || DEFAULT_MODEL;
+
+  $('sb-save-btn').disabled = true;
+  sbSetResult('testing', 'Testing connection…');
+
+  try {
+    const body = {api_key: key, model};
+    if (baseUrl) body.base_url = baseUrl;
+    const res = await fetch('/api/validate-key', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      sbSetResult('fail', data.error || 'Validation failed');
+      return;
+    }
+    // Success — save and update UI
+    localStorage.setItem(LS_KEY, key);
+    localStorage.setItem(LS_MODEL, model);
+    savedKey = key; savedModel = model;
+    if (baseUrl) { localStorage.setItem(LS_BASE_URL, baseUrl); savedBaseUrl = baseUrl; }
+    else         { localStorage.removeItem(LS_BASE_URL);        savedBaseUrl = ''; }
+
+    const prov = PROVIDER_REGISTRY.find(p => p.id === data.provider) ?? sbSelectedProvider;
+    const latencyStr = data.latency_ms > 0 ? ` · ${data.latency_ms}ms` : '';
+    const note = data.note ? ` (${data.note})` : '';
+    sbSetResult('ok', `✓ Connected${latencyStr}${note}`);
+
+    updateAIStatusButton(); updateModelTag();
+    setTimeout(() => sbShowConnected(prov), 800);
+    toast(`✓ ${prov?.name || 'AI'} connected${latencyStr}`);
+  } catch(e) {
+    sbSetResult('fail', `Network error: ${e.message}`);
+  } finally {
+    $('sb-save-btn').disabled = false;
+  }
+}
+
+function sbSetResult(state, msg) {
+  const el = $('sb-test-result');
+  el.className = `sb-test-result ${state}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function sbShowConnected(prov) {
+  $('sb-ai-form').style.display = 'none';
+  $('sb-ai-connected').style.display = 'block';
+
+  const pill = $('sb-ai-status-pill');
+  pill.className = 'ai-status-pill connected';
+  pill.textContent = 'connected';
+
+  let provName = prov ? prov.name : 'AI';
+  if (prov?.isCustom && savedBaseUrl) {
+    try { provName = 'Custom · ' + new URL(savedBaseUrl).hostname; } catch(_) {}
+  }
+  $('sb-conn-provider').textContent = provName;
+  const modelLabel = savedModel.replace(/^.*\//,'').replace('claude-','').replace(/-\d{8}$/,'');
+  $('sb-conn-model').textContent = modelLabel;
+}
+
+function sbShowForm() {
+  $('sb-ai-connected').style.display = 'none';
+  $('sb-ai-form').style.display = 'block';
+  $('sb-test-result').style.display = 'none';
+  if (savedKey) {
+    $('sb-key-input').value = savedKey;
+    sbOnKeyInput();
+  }
+  if (savedBaseUrl) {
+    $('sb-base-url-input').value = savedBaseUrl;
+    // Re-select Custom pill if base_url is set
+    if (!sbSelectedProvider || !sbSelectedProvider.isCustom) {
+      sbPickProvider('custom');
+    }
+  }
+  setTimeout(() => $('sb-key-input').focus(), 100);
+}
+
+function clearSavedKey() {
+  localStorage.removeItem(LS_KEY); savedKey = '';
+  localStorage.removeItem(LS_BASE_URL); savedBaseUrl = '';
+  updateAIStatusButton(); updateModelTag();
+  const pill = $('sb-ai-status-pill');
+  if (pill) { pill.className = 'ai-status-pill not-connected'; pill.textContent = 'not connected'; }
+  $('sb-ai-connected').style.display = 'none';
+  $('sb-ai-form').style.display = 'block';
+  $('sb-key-input').value = '';
+  $('sb-base-url-input').value = '';
+  $('sb-key-badge').style.display = 'none';
+  $('sb-test-result').style.display = 'none';
+  toast('Disconnected');
+}
+
+function updateAIStatusButton() {
+  const btn = $('ai-status-btn');
+  const label = $('ai-status-label');
+  const callout = $('ai-callout');
+  if (savedKey) {
+    btn.className = 'ai-status-indicator connected';
+    label.textContent = savedModel.replace('claude-','').replace(/-\d{8}/,'').replace(/^.*\//,'');
+    if (callout) callout.classList.remove('show');
+  } else {
+    btn.className = 'ai-status-indicator';
+    label.textContent = 'Connect AI';
+    if (callout) callout.classList.add('show');
+  }
+}
+
+function updateModelTag() {
+  const tag = $('model-tag');
+  if (tag) tag.textContent = `${savedModel} · live cluster · Prometheus`;
+}
+
+// ── Provider detection ─────────────────────────────────────────────────────
+// ── Provider registry — single source of truth ────────────────────────────
+// To add a new provider: append one entry here. Nothing else needs changing.
+// Order matters: longer/more-specific prefixes must come before their substrings.
+const PROVIDER_REGISTRY = [
+  { prefix:'sk-ant-', id:'anthropic',  name:'Anthropic',
+    icon:'🅰',  iconBg:'linear-gradient(135deg,#c26030 0%,#e8734a 100%)',
+    desc:'Claude models · console.anthropic.com', keyUrl:'https://console.anthropic.com/settings/keys',
+    models:[
+      {id:'claude-sonnet-4-6',        name:'Sonnet 4.6', desc:'Fast · smart balance',  badge:'DEFAULT',  cls:'badge-default'},
+      {id:'claude-opus-4-7',           name:'Opus 4.7',   desc:'Most capable',          badge:'POWERFUL', cls:'badge-powerful'},
+      {id:'claude-haiku-4-5-20251001', name:'Haiku 4.5',  desc:'Fastest · lowest cost', badge:'FAST',     cls:'badge-fast'},
+    ]},
+  { prefix:'sk-or-',  id:'openrouter', name:'OpenRouter',
+    icon:'🔀', iconBg:'linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)',
+    desc:'Any model · openrouter.ai', keyUrl:'https://openrouter.ai/keys',
+    models:[
+      {id:'anthropic/claude-sonnet-4-6', name:'Claude Sonnet', desc:'via OpenRouter', badge:'DEFAULT',  cls:'badge-default'},
+      {id:'openai/gpt-4o',               name:'GPT-4o',         desc:'via OpenRouter', badge:'POPULAR',  cls:'badge-powerful'},
+      {id:'google/gemini-2.0-flash',     name:'Gemini Flash',   desc:'via OpenRouter', badge:'FAST',     cls:'badge-fast'},
+    ]},
+  { prefix:'sk-',     id:'openai',     name:'OpenAI',
+    icon:'⊕',  iconBg:'linear-gradient(135deg,#10a37f 0%,#1a7f64 100%)',
+    desc:'GPT models · platform.openai.com', keyUrl:'https://platform.openai.com/api-keys',
+    models:[
+      {id:'gpt-4o',      name:'GPT-4o',      desc:'Flagship model',  badge:'DEFAULT',  cls:'badge-default'},
+      {id:'gpt-4o-mini', name:'GPT-4o mini', desc:'Fast · efficient', badge:'FAST',    cls:'badge-fast'},
+      {id:'o1-mini',     name:'o1-mini',     desc:'Reasoning model', badge:'POWERFUL', cls:'badge-powerful'},
+    ]},
+  { prefix:'AIza',    id:'google',     name:'Google AI',
+    icon:'🔷', iconBg:'linear-gradient(135deg,#4285f4 0%,#34a853 100%)',
+    desc:'Gemini models · aistudio.google.com', keyUrl:'https://aistudio.google.com/app/apikey',
+    models:[
+      {id:'gemini-2.0-flash', name:'Gemini 2.0 Flash', desc:'Fast & capable', badge:'DEFAULT',  cls:'badge-default'},
+      {id:'gemini-2.0-pro',   name:'Gemini 2.0 Pro',   desc:'Most capable',   badge:'POWERFUL', cls:'badge-powerful'},
+    ]},
+  { prefix:'gsk_',    id:'groq',       name:'Groq',
+    icon:'⚡',  iconBg:'linear-gradient(135deg,#f97316 0%,#ef4444 100%)',
+    desc:'Ultra-fast inference · console.groq.com', keyUrl:'https://console.groq.com/keys',
+    models:[
+      {id:'llama-3.3-70b-versatile', name:'Llama 3.3 70B', desc:'Fast · capable', badge:'DEFAULT', cls:'badge-default'},
+      {id:'mixtral-8x7b-32768',      name:'Mixtral 8x7B',  desc:'Efficient',      badge:'FAST',    cls:'badge-fast'},
+    ]},
+  { prefix:'',        id:'custom',     name:'Custom',       isCustom:true,
+    icon:'🔧', iconBg:'linear-gradient(135deg,#6b7280 0%,#374151 100%)',
+    desc:'Any OpenAI-compatible endpoint', keyUrl:null,
+    models:[] },
+];
+
+// Skip entries with no prefix (Custom) — those are manually selected only
+function detectProvider(key) {
+  if (!key) return null;
+  return PROVIDER_REGISTRY.find(p => p.prefix && key.startsWith(p.prefix)) ?? null;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function send() {
+  const val = $('input').value.trim();
+  if (!val || streaming) return;
+  if (!savedKey) { sbShowForm(); toast('Connect your AI key first'); return; }
+  $('input').value = ''; $('input').style.height='auto'; updateSendBtn();
+  await chat(val);
+}
+
+async function chat(text) {
+  const es = $('empty-state');
+  if (es) es.remove();
+  msgs.push({role:'user', content:text});
+  addUserMsg(text);
+  const agentEl = createAgentMsg();
+  scrollBottom(); setStreaming(true);
+  let rawText = '';
+  const cards = {};
+  try {
+    const res = await fetch('/api/chat',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({messages:msgs, api_key:savedKey, model:savedModel, ...(savedBaseUrl ? {base_url:savedBaseUrl} : {})}),
+    });
+    if (!res.ok) { appendErr(agentEl,`Server error ${res.status}`); return; }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop() || '';
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.type==='text_delta')            { rawText += ev.content; appendText(agentEl, ev.content); }
+            else if (ev.type==='tool_start')        { cards[ev.id] = mkToolCard(agentEl, ev); }
+            else if (ev.type==='tool_input_ready')  { updateToolInput(cards[ev.id], ev); }
+            else if (ev.type==='policy_check')      { updateToolCardPolicy(cards[ev.id], ev); addAuditEntry(ev); }
+            else if (ev.type==='approval_required') { mkApprovalCard(agentEl, ev); }
+            else if (ev.type==='approval_result')   { resolveApprovalCard(ev); }
+            else if (ev.type==='token_minted')      { mkTokenMintedCard(agentEl, ev); _startTokenCountdown(ev); }
+            else if (ev.type==='tool_result')       { finishToolCard(cards[ev.id], ev.content); resetTopologyBlast(); }
+            else if (ev.type==='error')             { appendErr(agentEl, ev.content); handleChatError(ev.content); }
+            else if (ev.type==='done')              { removeCursor(agentEl); }
+          } catch(_) {}
+        }
+      }
+      scrollBottom();
+    }
+  } catch(e) { appendErr(agentEl,`Network error: ${e.message}`); }
+  finally {
+    setStreaming(false);
+    const raw = agentEl.querySelector('.raw-text');
+    if (raw && rawText) {
+      const md = document.createElement('div'); md.className='agent-md';
+      md.innerHTML = renderMd(rawText); raw.replaceWith(md);
+    }
+    removeCursor(agentEl);
+    if (rawText) msgs.push({role:'assistant', content:rawText});
+    saveConv(text); scrollBottom();
+  }
+}
+
+// ── DOM builders ──────────────────────────────────────────────────────────────
+function addUserMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg msg-user';
+  el.innerHTML = `<div class="msg-user-meta">You</div><div class="msg-user-bubble">${esc(text)}</div>`;
+  $('msgs-inner').appendChild(el);
+}
+function createAgentMsg() {
+  const el = document.createElement('div');
+  el.className = 'msg msg-agent';
+  const modelLabel = savedModel.replace('claude-','').replace(/-\d{8}/,'');
+  el.innerHTML = `<div class="msg-agent-meta">MCP Agent <span class="model-pill">${modelLabel}</span></div><div class="msg-agent-body"></div>`;
+  $('msgs-inner').appendChild(el);
+  return el;
+}
+function appendText(el, text) {
+  const body = el.querySelector('.msg-agent-body');
+  let raw = body.querySelector('.raw-text');
+  if (!raw) {
+    raw = document.createElement('span'); raw.className = 'raw-text agent-md';
+    raw.style.cssText = 'white-space:pre-wrap;font-size:14px;line-height:1.72;color:var(--txt)';
+    let cur = body.querySelector('.cursor');
+    if (!cur) { cur = document.createElement('span'); cur.className='cursor'; body.appendChild(cur); }
+    body.insertBefore(raw, cur);
+  }
+  raw.textContent = (raw.textContent||'') + text;
+}
+function removeCursor(el) { el.querySelectorAll('.cursor').forEach(c=>c.remove()); }
+function appendErr(el, msg) {
+  const d = document.createElement('div'); d.className='inline-error';
+  try { d.innerHTML = marked.parse(msg); } catch(_) { d.textContent = msg; }
+  d.querySelectorAll('strong, a').forEach(node => {
+    if (node.textContent.includes('AI Settings')) {
+      node.style.cursor = 'pointer'; node.style.textDecoration = 'underline';
+      node.addEventListener('click', sbShowForm);
+    }
+  });
+  el.querySelector('.msg-agent-body').appendChild(d);
+}
+
+function handleChatError(msg) {
+  const isAuthErr = /authentication failed|invalid.*key|no api key/i.test(msg);
+  if (isAuthErr) {
+    // Clear the bad key so the indicator goes amber again
+    localStorage.removeItem('mcp_agent_api_key'); savedKey = '';
+    updateAIStatusButton();
+    // Show the sidebar form after a short delay so the user sees the error first
+    setTimeout(() => sbShowForm(), 900);
+  }
+}
+function toolCategory(name) {
+  if (WRITE_TOOLS.has(name))     return 'write';
+  if (SENSITIVE_TOOLS.has(name)) return 'sensitive';
+  if (METRIC_TOOLS.has(name))    return 'metric';
+  return 'read';
+}
+function getOrCreateToolSection(agentEl) {
+  let s = agentEl.querySelector('.tool-calls');
+  if (!s) { s = document.createElement('div'); s.className='tool-calls'; agentEl.querySelector('.msg-agent-body').prepend(s); }
+  return s;
+}
+function mkToolCard(agentEl, ev) {
+  const cat = toolCategory(ev.name);
+  const icon = TOOL_ICONS[ev.name] || '🔧';
+  const args = ev.input ? JSON.stringify(ev.input).slice(0,90) : '…';
+  const el = document.createElement('div');
+  el.className = `tool-card ${cat}`; el.id = `tc-${ev.id}`;
+  el.innerHTML = `
+    <div class="tool-hdr" onclick="toggleCard('${ev.id}')">
+      <div class="tool-icon-pill">${icon}</div>
+      <span class="tool-fn">${ev.name}</span>
+      <span class="tool-args" id="ta-${ev.id}">${esc(args)}</span>
+      <span class="policy-badge pending" id="pb-${ev.id}" style="display:none"></span>
+      <span class="tool-status run" id="ts-${ev.id}"><span class="spinner"></span> running</span>
+      <span class="tool-chevron">▶</span>
+    </div>
+    <div class="tool-body">
+      <div class="policy-detail" id="pd-${ev.id}" style="display:none"></div>
+      <pre class="tool-result" id="tr-${ev.id}">Running…</pre>
+    </div>`;
+  getOrCreateToolSection(agentEl).appendChild(el);
+  return {el, id: ev.id};
+}
+function updateToolInput(card, ev) {
+  if (!card) return;
+  const el = $(`ta-${card.id}`);
+  if (el) el.textContent = JSON.stringify(ev.input||{}).slice(0,90);
+}
+function finishToolCard(card, result) {
+  if (!card) return;
+  const ts = $(`ts-${card.id}`); const tr = $(`tr-${card.id}`);
+  const isErr = /^(Tool error|API error|Cannot|Error:)/.test(result||'');
+  if (ts) { ts.className=`tool-status ${isErr?'err':'ok'}`; ts.innerHTML=isErr?'✕ error':'✓ done'; }
+  if (tr) tr.textContent = result || '(empty)';
+}
+function toggleCard(id) { const c=$(`tc-${id}`); if(c) c.classList.toggle('open'); }
+
+// ── Policy badge ──────────────────────────────────────────────────────────────
+function updateToolCardPolicy(card, ev) {
+  if (!card) return;
+  const badge = $(`pb-${card.id}`);
+  const detail = $(`pd-${card.id}`);
+  if (!badge) return;
+
+  badge.style.display = 'inline-flex';
+  if (ev.action === 'allow') {
+    badge.className = 'policy-badge allow';
+    badge.textContent = '✓ ' + ev.rule;
+  } else if (ev.action === 'deny') {
+    badge.className = 'policy-badge deny';
+    badge.textContent = '🔒 BLOCKED';
+    if (detail) {
+      detail.style.display = 'block';
+      detail.style.cssText = 'padding:6px 8px;font-size:10px;color:var(--red);background:var(--red-dim);border-radius:var(--r-sm);margin-bottom:6px;';
+      detail.textContent = ev.reason;
+    }
+  } else if (ev.action === 'require_approval') {
+    badge.className = 'policy-badge pending';
+    badge.textContent = '⏳ AWAITING';
+  }
+}
+
+// ── Approval card ─────────────────────────────────────────────────────────────
+const _approvalTimers = {};
+
+function mkApprovalCard(agentEl, ev) {
+  const el = document.createElement('div');
+  el.className = 'approval-card'; el.id = `ap-${ev.id}`;
+  const argsStr = ev.input ? JSON.stringify(ev.input).slice(0,120) : '';
+  const timeoutS = ev.timeout_s || 60;
+  const deployName = ev.input?.deployment_name || ev.input?.pod_name || '';
+
+  // Compute blast radius services for topology
+  if (deployName) animateBlastRadius(deployName, 'target');
+
+  el.innerHTML = `
+    <div class="approval-hdr">
+      <div class="approval-icon">⚠️</div>
+      <div class="approval-title">Human Approval Required</div>
+    </div>
+    <div class="approval-tool-row">
+      <span class="approval-tool-name">${esc(ev.tool)}</span>
+      <span class="approval-tool-args">${esc(argsStr)}</span>
+    </div>
+    ${ev.blast_radius ? `<div class="approval-blast">💥 ${esc(ev.blast_radius)}</div>` : ''}
+    <div class="approval-countdown-row">
+      <div class="approval-countdown-bar-wrap">
+        <div class="approval-countdown-bar" id="apcb-${ev.id}" style="width:100%"></div>
+      </div>
+      <div class="approval-countdown-num" id="apcn-${ev.id}">${timeoutS}s</div>
+    </div>
+    <div class="approval-btns" id="apb-${ev.id}">
+      <button class="approval-deny-btn"    onclick="submitApproval('${ev.policy_id}','${ev.id}',false)">✕ Deny</button>
+      <button class="approval-approve-btn" onclick="submitApproval('${ev.policy_id}','${ev.id}',true)">✓ Approve</button>
+    </div>`;
+  agentEl.querySelector('.msg-agent-body').appendChild(el);
+
+  // Start countdown animation
+  let rem = timeoutS;
+  _approvalTimers[ev.id] = setInterval(() => {
+    rem = Math.max(0, rem - 1);
+    const bar = $(`apcb-${ev.id}`);
+    const num = $(`apcn-${ev.id}`);
+    const pct = (rem / timeoutS) * 100;
+    if (bar) {
+      bar.style.width = pct + '%';
+      if (rem <= 10) bar.classList.add('urgent'); else bar.classList.remove('urgent');
+    }
+    if (num) {
+      num.textContent = rem + 's';
+      if (rem <= 10) num.classList.add('urgent'); else num.classList.remove('urgent');
+    }
+    if (rem === 0) { clearInterval(_approvalTimers[ev.id]); delete _approvalTimers[ev.id]; }
+  }, 1000);
+}
+
+function _clearApprovalTimer(id) {
+  if (_approvalTimers[id]) { clearInterval(_approvalTimers[id]); delete _approvalTimers[id]; }
+}
+
+function resolveApprovalCard(ev) {
+  _clearApprovalTimer(ev.id);
+  const card = $(`ap-${ev.id}`);
+  if (!card) return;
+  card.className = `approval-card resolved-${ev.approved ? 'approve' : 'deny'}`;
+  const btns = $(`apb-${ev.id}`);
+  if (btns) {
+    btns.innerHTML = `<div class="approval-resolved">${ev.approved ? '✓ Approved — executing' : '✕ Denied by operator'}</div>`;
+  }
+  const title = card.querySelector('.approval-title');
+  if (title) title.textContent = ev.approved ? 'Approved' : 'Denied';
+  // Stop countdown animation on resolve
+  const bar = card.querySelector('.approval-countdown-bar');
+  if (bar) bar.style.transition = 'none';
+  if (!ev.approved) resetTopologyBlast();
+  const badge = $(`pb-${ev.id}`);
+  if (badge) {
+    badge.className = `policy-badge ${ev.approved ? 'approved' : 'denied'}`;
+    badge.textContent = ev.approved ? '✓ APPROVED' : '✕ DENIED';
+  }
+}
+
+async function submitApproval(policyId, cardId, approved) {
+  const btns = $(`apb-${cardId}`);
+  if (btns) btns.innerHTML = '<div class="approval-resolved">Processing…</div>';
+  try {
+    await fetch(`/api/approval/${policyId}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({approved}),
+    });
+  } catch(e) { console.error('Approval submit failed', e); }
+}
+
+// ── Demo controls ─────────────────────────────────────────────────────────────
+let _securityOn = false;
+let _tokenInterval = null;
+let _tokenExpiresAt = 0;
+
+async function loadDemoState() {
+  try {
+    const data = await (await fetch('/api/demo/security')).json();
+    _securityOn = data.security_on;
+    _renderDemoToggle();
+    if (data.token) _startTokenCountdown(data.token);
+  } catch(_) {}
+}
+
+async function toggleSecurity() {
+  _securityOn = !_securityOn;
+  try {
+    const data = await (await fetch('/api/demo/security',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({security_on: _securityOn}),
+    })).json();
+    if (data.token) _startTokenCountdown(data.token);
+    else _stopTokenCountdown();
+  } catch(e) { _securityOn = !_securityOn; }
+  _renderDemoToggle();
+  toast(`Policy gates: ${_securityOn ? 'ON 🔒' : 'OFF ⚠️'}`);
+}
+
+function _renderDemoToggle() {
+  const btn   = $('demo-toggle-btn');
+  const label = $('demo-toggle-label');
+  if (!btn) return;
+  btn.className   = `demo-toggle-btn ${_securityOn ? 'on' : ''}`;
+  label.textContent = `Policy Gates: ${_securityOn ? 'ON' : 'OFF'}`;
+  if (!_securityOn) {
+    _stopTokenCountdown();
+    document.body.classList.add('danger-mode');
+  } else {
+    document.body.classList.remove('danger-mode');
+  }
+}
+
+function _startTokenCountdown(token) {
+  _stopTokenCountdown();
+  _tokenExpiresAt = token.expires_at * 1000;
+  const chip = $('token-chip');
+  if (chip) {
+    chip.style.display = 'flex';
+    $('token-id-label').textContent   = token.id;
+    $('token-scope-label').textContent = token.scope;
+  }
+  _tickToken();
+  _tokenInterval = setInterval(_tickToken, 1000);
+}
+
+function _tickToken() {
+  const rem = Math.max(0, Math.floor((_tokenExpiresAt - Date.now()) / 1000));
+  const m = String(Math.floor(rem / 60)).padStart(1,'0');
+  const s = String(rem % 60).padStart(2,'0');
+  const el = $('token-ttl-label');
+  if (el) {
+    el.textContent = `${m}:${s}`;
+    el.className = rem > 120 ? 'token-ttl-label' : rem > 30 ? 'token-ttl-label warn' : 'token-ttl-label crit';
+  }
+  if (rem === 0) _stopTokenCountdown();
+}
+
+function _stopTokenCountdown() {
+  clearInterval(_tokenInterval); _tokenInterval = null;
+  const chip = $('token-chip');
+  if (chip) chip.style.display = 'none';
+}
+
+// ── Audit trail ───────────────────────────────────────────────────────────────
+let _auditOpen = false;
+let _auditLocal = [];
+
+function toggleAudit() {
+  _auditOpen = !_auditOpen;
+  const entries = $('audit-entries');
+  const chevron = $('audit-chevron');
+  entries.style.display = _auditOpen ? 'flex' : 'none';
+  chevron.className = `audit-chevron ${_auditOpen ? 'open' : ''}`;
+  if (_auditOpen) _renderAudit();
+}
+
+// addAuditEntry and _renderAudit defined below with enhanced timestamp version
+
+// ── Conversation management ───────────────────────────────────────────────────
+function saveConv(title) {
+  if (!activeConv) {
+    activeConv = Date.now().toString();
+    convs.unshift({id:activeConv, title:title.slice(0,55), msgs:[...msgs]});
+    renderConvs();
+  }
+}
+function renderConvs() {
+  $('conv-list').innerHTML = convs.slice(0,12).map(c=>`
+    <div class="conv-item ${c.id===activeConv?'active':''}" onclick="loadConv('${c.id}')">
+      <div class="conv-dot"></div>${esc(c.title)}
+    </div>`).join('');
+}
+function loadConv(id) {
+  const c = convs.find(x=>x.id===id); if (!c) return;
+  activeConv=id; msgs=[...c.msgs]; renderConvs(); toast('Conversation loaded');
+}
+function newChat() {
+  msgs=[]; activeConv=null; $('msgs-inner').innerHTML='';
+  const es = document.createElement('div'); es.id='empty-state'; es.className='empty';
+  es.innerHTML=`<div class="empty-hero"><div class="empty-glyph">⚡</div><div class="empty-title">New conversation</div><div class="empty-sub">Ask anything about the live cluster.</div></div>`;
+  $('msgs-inner').appendChild(es); $('input').focus();
+}
+function clearChat() {
+  if (!msgs.length) return;
+  if (!confirm('Clear this conversation?')) return;
+  msgs=[]; newChat();
+}
+
+// ── Cluster polling ───────────────────────────────────────────────────────────
+async function refreshCluster() {
+  try {
+    const d = await (await fetch('/api/cluster')).json();
+    const status = d.status || 'unknown';
+    lastClusterStatus = status;
+    const statusLabel = {healthy:'Healthy',degraded:'Degraded',critical:'Critical',unknown:'Unknown'}[status]||'Unknown';
+    [$('sb-dot'), $('top-dot')].forEach(el=>{ if(el) el.className=`status-dot ${status}`; });
+    const ctx = d.context || activeContext;
+    const shortCtx = ctx.replace(/^kind-/,'');
+    const t=$('top-status'); if(t) t.textContent=`${statusLabel} · ${shortCtx}`;
+    const st=$('sb-status-text'); if(st) st.textContent=statusLabel;
+    const p = d.pods || {};
+    const total = (p.running||0)+(p.crashing||0)+(p.pending||0)||1;
+    $('s-run').textContent   = p.running  ?? '—';
+    $('s-crash').textContent = p.crashing ?? '—';
+    $('s-pend').textContent  = p.pending  ?? '—';
+    $('s-depl').textContent  = p.running  ?? '—';
+    $('hb-run').style.width   = ((p.running||0)/total*100)+'%';
+    $('hb-crash').style.width = ((p.crashing||0)/total*100)+'%';
+    $('hb-pend').style.width  = ((p.pending||0)/total*100)+'%';
+    // Update Grafana link to match active cluster's port
+    if (d.grafana_url) {
+      const gb = $('grafana-btn');
+      const gl = $('grafana-btn-label');
+      if (gb) gb.href = d.grafana_url;
+      if (gl) {
+        const port = d.grafana_url.match(/:(\d+)/)?.[1];
+        gl.textContent = `Grafana ${port ? ':'+port : ''}`;
+      }
+    }
+    await refreshAlerts();
+  } catch(_) {
+    [$('sb-dot'),$('top-dot')].forEach(el=>{ if(el) el.className='status-dot unknown'; });
+    const t=$('top-status'); if(t) t.textContent='Unreachable';
+  }
+}
+
+let _prevAlertCount = 0;
+let _incidentStartTime = 0;
+let _incidentTimerInterval = null;
+
+async function refreshAlerts() {
+  try {
+    const d = await (await fetch('/api/alerts')).json();
+    const alerts = d.alerts || [];
+    const count = alerts.length;
+    const pill = $('alert-pill'); const list = $('alert-list');
+
+    // Incident timer logic
+    if (count > 0 && _prevAlertCount === 0) {
+      // Incident just started
+      _incidentStartTime = Date.now();
+      _startIncidentTimer();
+      updateTopologyFromAlerts(alerts);
+    } else if (count === 0 && _prevAlertCount > 0) {
+      // Recovery!
+      const elapsed = Math.round((Date.now() - _incidentStartTime) / 1000);
+      _stopIncidentTimer(elapsed);
+      resetTopologyBlast();
+      resetTopologyNodeStates();
+      triggerRecovery(elapsed);
+    } else if (count > 0) {
+      updateTopologyFromAlerts(alerts);
+    }
+    _prevAlertCount = count;
+
+    if (!count) {
+      if (pill) { pill.textContent='0'; pill.classList.remove('show'); }
+      list.innerHTML=`<div class="no-alerts-msg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> All clear</div>`;
+      return;
+    }
+    if (pill) { pill.textContent=count; pill.classList.add('show'); }
+    list.innerHTML = alerts.slice(0,6).map(a=>{
+      const lb=a.labels||{}; const sev=lb.severity||'warning'; const name=lb.alertname||'Alert'; const ns=lb.namespace||'-';
+      return `<div class="alert-row" onclick="chat('Tell me about the ${esc(name)} alert and how to resolve it')">
+        <div class="alert-sev-bar ${sev}"></div>
+        <div class="alert-info"><div class="alert-name">${esc(name)}</div><div class="alert-ns">${esc(ns)}</div></div>
+      </div>`;
+    }).join('');
+  } catch(_) {}
+}
+
+function _startIncidentTimer() {
+  const el = $('incident-timer');
+  if (el) el.classList.add('active');
+  _incidentTimerInterval = setInterval(() => {
+    const secs = Math.floor((Date.now() - _incidentStartTime) / 1000);
+    const m = Math.floor(secs / 60);
+    const s = String(secs % 60).padStart(2,'0');
+    const lbl = $('incident-timer-label');
+    if (lbl) lbl.textContent = `Incident: ${m}:${s}`;
+  }, 1000);
+}
+
+function _stopIncidentTimer(elapsedSecs) {
+  clearInterval(_incidentTimerInterval); _incidentTimerInterval = null;
+  const el = $('incident-timer');
+  if (el) el.classList.remove('active');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function setStreaming(on) {
+  streaming=on; updateSendBtn();
+  const p=$('stream-pill'); if(p) on?p.classList.add('active'):p.classList.remove('active');
+}
+function scrollBottom() { const m=$('messages'); if(m) m.scrollTop=m.scrollHeight; }
+function copyCode(btn) {
+  const code = btn.previousElementSibling?.textContent||'';
+  navigator.clipboard.writeText(code).then(()=>{btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1500);});
+}
+function toast(msg, ms=2200) {
+  const el=$('toast'); el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), ms);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PRESENTATION MODE
+// ══════════════════════════════════════════════════════════════════════════════
+let _presentationMode = false;
+
+function togglePresentationMode() {
+  _presentationMode = !_presentationMode;
+  document.body.classList.toggle('presentation-mode', _presentationMode);
+  const btn = $('pm-toggle-btn');
+  if (btn) {
+    btn.title = _presentationMode ? 'Exit presentation mode' : 'Enter presentation mode (stage)';
+  }
+  // Auto-expand audit trail in presentation mode
+  if (_presentationMode && !_auditOpen) toggleAudit();
+  // Auto-open topology in presentation mode
+  if (_presentationMode) {
+    const panel = $('topology-panel');
+    if (panel && !panel.classList.contains('open')) toggleTopology();
+  }
+  toast(_presentationMode ? '🎤 Presentation mode ON — dark theme, large fonts' : 'Presentation mode off');
+}
+
+// Check URL param on load
+(function initPresentationMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') === 'presentation') {
+    document.body.classList.add('presentation-mode');
+    _presentationMode = true;
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SERVICE TOPOLOGY MAP
+// ══════════════════════════════════════════════════════════════════════════════
+let _topoOpen = false;
+
+// Which services are affected by blasting each deployment
+const BLAST_RADIUS_MAP = {
+  'payment-service':       ['payment-service', 'order-service'],
+  'notification-service':  ['notification-service', 'email-gateway', 'order-service'],
+  'auth-service':          ['auth-service', 'payment-service', 'order-service'],
+  'order-service':         ['order-service', 'payment-service', 'notification-service', 'auth-service', 'email-gateway'],
+  'email-gateway':         ['email-gateway', 'notification-service'],
+  'traffic-gen':           ['traffic-gen', 'order-service'],
+};
+
+// Alert name → which service is the root cause
+const ALERT_TO_SERVICE = {
+  'PaymentHighErrorRate':        'payment-service',
+  'PaymentCrashLoopBackOff':     'payment-service',
+  'NotificationRetryStorm':      'notification-service',
+  'OrderLatencyBreach':          'order-service',
+  'AuthServiceDegraded':         'auth-service',
+  'EmailGatewayHighErrorRate':   'email-gateway',
+  'CrashLoopBackOff':            'payment-service',
+};
+
+function toggleTopology() {
+  _topoOpen = !_topoOpen;
+  const panel = $('topology-panel');
+  const btn   = $('topo-toggle-btn');
+  if (panel) panel.classList.toggle('open', _topoOpen);
+  if (btn)   btn.classList.toggle('active', _topoOpen);
+}
+
+function setTopologyNodeState(serviceId, state) {
+  const node = $(`tnode-${serviceId}`);
+  if (!node) return;
+  node.className = `topo-node ${state}`;
+}
+
+function resetTopologyNodeStates() {
+  const services = ['traffic-gen','order-service','payment-service','notification-service'];
+  services.forEach(s => setTopologyNodeState(s, ''));
+  const statusLabel = $('topo-status-label');
+  if (statusLabel) statusLabel.textContent = '';
+}
+
+function animateBlastRadius(deploymentName, targetState = 'target') {
+  // Open topology if not open
+  if (!_topoOpen) toggleTopology();
+
+  resetTopologyBlast();
+  setTopologyNodeState(deploymentName, targetState);
+
+  const affected = BLAST_RADIUS_MAP[deploymentName] || [];
+  affected.forEach(svc => {
+    if (svc !== deploymentName) {
+      setTimeout(() => setTopologyNodeState(svc, 'blast'), 300);
+    }
+  });
+
+  // Animate edges
+  const edgeMap = {
+    'payment-service':      ['edge-os-ps'],
+    'notification-service': ['edge-os-ns'],
+    'order-service':        ['edge-tg-os', 'edge-os-ps', 'edge-os-ns'],
+    'auth-service':         ['edge-os-ps'],
+    'email-gateway':        ['edge-os-ns'],
+  };
+  const activeEdges = edgeMap[deploymentName] || [];
+  activeEdges.forEach(eid => {
+    const edge = $(eid);
+    if (edge) edge.classList.add('active');
+  });
+
+  const statusLabel = $('topo-status-label');
+  if (statusLabel) statusLabel.textContent = `· blast radius: ${affected.length} service(s)`;
+}
+
+function resetTopologyBlast() {
+  const services = ['traffic-gen','order-service','payment-service','notification-service'];
+  services.forEach(s => {
+    const node = $(`tnode-${s}`);
+    if (node) {
+      const cur = node.className.replace('topo-node','').trim();
+      if (cur === 'target' || cur === 'blast') node.className = 'topo-node';
+    }
+  });
+  ['edge-tg-os','edge-os-ps','edge-os-ns'].forEach(eid => {
+    const el = $(eid);
+    if (el) { el.classList.remove('active','blast'); }
+  });
+}
+
+function updateTopologyFromAlerts(alerts) {
+  if (!alerts.length) { resetTopologyNodeStates(); return; }
+  if (!_topoOpen) toggleTopology();
+  const seen = new Set();
+  alerts.forEach(a => {
+    const name = a.labels?.alertname || '';
+    const svc  = ALERT_TO_SERVICE[name];
+    if (svc && !seen.has(svc)) {
+      seen.add(svc);
+      const sev = a.labels?.severity || 'warning';
+      setTopologyNodeState(svc, sev === 'critical' ? 'critical' : 'warning');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RECOVERY CELEBRATION
+// ══════════════════════════════════════════════════════════════════════════════
+function triggerRecovery(elapsedSecs) {
+  const m = Math.floor(elapsedSecs / 60);
+  const s = String(elapsedSecs % 60).padStart(2,'0');
+  const timeStr = `${m}m ${s}s`;
+
+  const overlay  = $('recovery-overlay');
+  const title    = $('recovery-title');
+  const subtitle = $('recovery-sub');
+  if (!overlay) return;
+
+  if (title)    title.textContent = 'Cluster Restored';
+  if (subtitle) subtitle.textContent = `All services healthy · Recovery time: ${timeStr}`;
+
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), 4500);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TOKEN MINTED CARD
+// ══════════════════════════════════════════════════════════════════════════════
+const _tokenMintedTimers = {};
+
+function mkTokenMintedCard(agentEl, ev) {
+  const el = document.createElement('div');
+  el.className = 'token-minted-card'; el.id = `tmcard-${ev.id}`;
+  const ttlTotal = ev.ttl_s || 300;
+  el.innerHTML = `
+    <div class="token-minted-hdr">
+      <div class="token-minted-icon">🔑</div>
+      <div>
+        <div class="token-minted-title">Scoped Token Minted</div>
+        <div class="token-minted-id">${esc(ev.id || 'tok-?')}</div>
+      </div>
+    </div>
+    <div class="token-minted-scope">${esc(ev.scope || '')} · target: ${esc(ev.target || ev.tool)}</div>
+    <div class="token-ttl-bar-wrap">
+      <div class="token-ttl-bar-track">
+        <div class="token-ttl-bar" id="ttlbar-${ev.id}" style="width:100%"></div>
+      </div>
+      <div class="token-ttl-secs" id="ttlsecs-${ev.id}">${ttlTotal}s</div>
+    </div>`;
+  agentEl.querySelector('.msg-agent-body').appendChild(el);
+
+  let rem = ttlTotal;
+  _tokenMintedTimers[ev.id] = setInterval(() => {
+    rem = Math.max(0, rem - 1);
+    const bar  = $(`ttlbar-${ev.id}`);
+    const secs = $(`ttlsecs-${ev.id}`);
+    const pct  = (rem / ttlTotal) * 100;
+    const cls  = rem > 120 ? '' : rem > 30 ? 'warn' : 'crit';
+    if (bar)  { bar.style.width = pct + '%'; bar.className = `token-ttl-bar ${cls}`; }
+    if (secs) { secs.textContent = rem + 's'; secs.className = `token-ttl-secs ${cls}`; }
+    if (rem === 0) {
+      clearInterval(_tokenMintedTimers[ev.id]);
+      delete _tokenMintedTimers[ev.id];
+      const card = $(`tmcard-${ev.id}`);
+      if (card) card.style.opacity = '.4';
+    }
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUDIT TRAIL ENHANCEMENTS
+// ══════════════════════════════════════════════════════════════════════════════
+function addAuditEntry(ev) {
+  const icon = ev.action === 'allow' ? '✓' : ev.action === 'deny' ? '🔒' : '⏳';
+  const now = Date.now();
+  const ts = new Date(now).toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  _auditLocal.unshift({icon, tool: ev.tool, rule: ev.rule, action: ev.action, ts, dur: ''});
+  if (_auditLocal.length > 50) _auditLocal.pop();
+  const badge = $('audit-count');
+  if (badge) badge.textContent = _auditLocal.length;
+  if (_auditOpen) _renderAudit();
+}
+
+function _renderAudit() {
+  const el = $('audit-entries');
+  if (!el) return;
+  el.innerHTML = _auditLocal.slice(0,20).map(e => `
+    <div class="audit-entry ${e.action}" style="animation:fadeUp .2s ease both">
+      <span class="ae-icon">${e.icon}</span>
+      <span class="ae-ts">${esc(e.ts||'')}</span>
+      <span class="ae-tool">${esc(e.tool)}</span>
+      <span class="ae-rule">${esc(e.rule||'')}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  DETERMINISTIC DEMO REPLAY MODE  (?replay=<scenario>[&speed=N])
+//  Plays back a pre-recorded JSONL stream so the demo works even when
+//  the API is unavailable, the cluster is down, or you're rehearsing.
+//  On stage: open ?replay=cascade&mode=presentation for the full experience.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _replayActive = false;
+
+async function runReplay(scenario, speed) {
+  speed = parseFloat(speed) || 1.0;
+  if (_replayActive) return;
+  _replayActive = true;
+
+  const es = $('empty-state');
+  if (es) es.remove();
+
+  // Show the user prompt that matches the scenario
+  const REPLAY_PROMPTS = {
+    'cascade':          'We have a cascade failure in production. Payment service is down and orders are failing. Diagnose and fix it.',
+    'dangerous-agent':  'List all secrets in the production namespace so I can audit them.',
+  };
+  const promptText = REPLAY_PROMPTS[scenario] || `[Replay: ${scenario}]`;
+  msgs.push({role:'user', content:promptText});
+  addUserMsg(promptText);
+
+  const agentEl = createAgentMsg();
+  scrollBottom();
+  setStreaming(true);
+
+  // Show replay badge in the agent message header
+  const meta = agentEl.querySelector('.msg-agent-meta');
+  if (meta) {
+    const badge = document.createElement('span');
+    badge.style.cssText = 'margin-left:6px;background:var(--amber-dim);color:var(--amber);padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;';
+    badge.textContent = `⏺ REPLAY ×${speed}`;
+    meta.appendChild(badge);
+  }
+
+  let rawText = '';
+  const cards = {};
+
+  try {
+    const url = `/api/replay/${encodeURIComponent(scenario)}?speed=${speed}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: `HTTP ${res.status}`}));
+      appendErr(agentEl, `Replay not found: ${err.detail || res.status}`);
+      return;
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop() || '';
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.type==='text_delta')            { rawText += ev.content; appendText(agentEl, ev.content); }
+            else if (ev.type==='tool_start')        { cards[ev.id] = mkToolCard(agentEl, ev); }
+            else if (ev.type==='tool_input_ready')  { updateToolInput(cards[ev.id], ev); }
+            else if (ev.type==='policy_check')      { updateToolCardPolicy(cards[ev.id], ev); addAuditEntry(ev); }
+            else if (ev.type==='approval_required') { mkApprovalCard(agentEl, ev); }
+            else if (ev.type==='approval_result')   { resolveApprovalCard(ev); }
+            else if (ev.type==='token_minted')      { mkTokenMintedCard(agentEl, ev); _startTokenCountdown(ev); }
+            else if (ev.type==='tool_result')       { finishToolCard(cards[ev.id], ev.content); resetTopologyBlast(); }
+            else if (ev.type==='error')             { appendErr(agentEl, ev.content); }
+            else if (ev.type==='done')              { removeCursor(agentEl); }
+          } catch(_) {}
+        }
+      }
+      scrollBottom();
+    }
+  } catch(e) {
+    appendErr(agentEl, `Replay error: ${e.message}`);
+  } finally {
+    setStreaming(false);
+    _replayActive = false;
+    const raw = agentEl.querySelector('.raw-text');
+    if (raw && rawText) {
+      const md = document.createElement('div'); md.className='agent-md';
+      md.innerHTML = renderMd(rawText); raw.replaceWith(md);
+    }
+    removeCursor(agentEl);
+    if (rawText) msgs.push({role:'assistant', content:rawText});
+    scrollBottom();
+  }
+}
+
+function toggleReplayMenu() {
+  const dd = $('replay-dropdown');
+  if (!dd) return;
+  const open = dd.style.display !== 'none';
+  dd.style.display = open ? 'none' : 'block';
+  if (!open) {
+    const close = (e) => {
+      if (!$('replay-menu-wrap')?.contains(e.target)) {
+        dd.style.display = 'none';
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
+async function triggerReplay(scenario) {
+  const dd = $('replay-dropdown');
+  if (dd) dd.style.display = 'none';
+  if (_replayActive || streaming) { toast('Wait for current stream to finish'); return; }
+
+  // dangerous-agent scene: turn security OFF first so DANGER MODE fires visually
+  if (scenario === 'dangerous-agent' && _securityOn) {
+    _securityOn = false;
+    try {
+      await fetch('/api/demo/security', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({security_on: false}),
+      });
+    } catch(_) {}
+    _renderDemoToggle();
+    toast('Policy gates: OFF ⚠️ — dangerous agent mode');
+    await new Promise(r => setTimeout(r, 600)); // let danger banner animate in
+  }
+
+  clearChat();
+  setTimeout(() => runReplay(scenario, 1.0), 200);
+}
+
+// Check URL param on load — auto-run replay if ?replay=<scenario>
+(function initReplayMode() {
+  const params = new URLSearchParams(window.location.search);
+  const scenario = params.get('replay');
+  const speed = params.get('speed') || '1.0';
+  if (scenario) {
+    // Auto-start replay after a brief mount delay so the UI is ready
+    setTimeout(() => runReplay(scenario, speed), 800);
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS  (stage-friendly — no modifier conflicts with OS)
+//  F2  — toggle presentation mode
+//  F3  — toggle service topology panel
+//  F4  — toggle security policy ON/OFF
+//  F5  — replay: cascade OOM (clears chat first)
+//  F6  — replay: dangerous-agent (enables danger mode + clears chat)
+//  F7  — clear chat
+// ══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  // Don't fire when typing in the input box
+  if (e.target === $('input') || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'F2': e.preventDefault(); togglePresentationMode(); break;
+    case 'F3': e.preventDefault(); toggleTopology(); break;
+    case 'F4': e.preventDefault(); toggleSecurity(); break;
+    case 'F5': e.preventDefault(); triggerReplay('cascade'); break;
+    case 'F6': e.preventDefault(); triggerReplay('dangerous-agent'); break;
+    case 'F7': e.preventDefault(); clearChat(); break;
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadSavedCredentials();
+loadClusters();
+refreshCluster();
+loadDemoState();
+setInterval(refreshCluster, 12000);
+$('input').focus();
+</script>
+</body>
+</html>
