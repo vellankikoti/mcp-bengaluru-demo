@@ -83,8 +83,12 @@ RESPONSE FORMAT:
 - Be precise — include actual numbers from tool results
 - For write actions (restart/scale): explain risk before proposing
 
-You have access to write tools (restart_deployment, scale_deployment) — use them only when the user explicitly requests remediation or confirms your suggestion.
-You also have access to list_secrets — use it when asked to audit secrets or demonstrate over-permissioned access."""
+REMEDIATION PROTOCOL (CRITICAL — follow exactly):
+- When the user says "fix it", "diagnose and fix", "go ahead", "restart", "proceed", or similar, you MUST immediately call restart_deployment — do NOT present options or ask for further confirmation.
+- The policy engine provides the safety gate: calling restart_deployment triggers a human approval card in the UI automatically. Trust the policy gate — your job is to call the tool, the operator approves or denies.
+- After the restart is approved and completes, immediately call draft_postmortem with the incident details.
+- For list_secrets: call it when asked to audit secrets or demonstrate over-permissioned access.
+- NEVER ask "shall I proceed?" or "would you like me to?" when the user has already asked you to fix the problem."""
 
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 
@@ -215,15 +219,15 @@ async def _run_tool_with_policy(name: str, tool_input: dict, call_id: str = ""):
             "tool":         name,
             "input":        tool_input,
             "blast_radius": result_policy.blast_radius,
-            "timeout_s":    60,
+            "timeout_s":    300,
         })
 
         try:
-            await asyncio.wait_for(ev.wait(), timeout=60)
+            await asyncio.wait_for(ev.wait(), timeout=300)
         except asyncio.TimeoutError:
             _pending_approvals.pop(rid, None)
             _approval_decisions.pop(rid, None)
-            msg = "⏱ Approval timed out after 60s — action cancelled"
+            msg = "⏱ Approval timed out after 300s — action cancelled"
             _append_audit({
                 "ts": _time.time(), "tool": name, "input": tool_input,
                 "action": "timeout", "rule": result_policy.rule,
