@@ -928,34 +928,38 @@ body.danger-mode .tool-card.sensitive::before {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   SERVICE TOPOLOGY MAP
+   SERVICE TOPOLOGY MAP — floating overlay, never auto-opens
 ══════════════════════════════════════════════════════════════════════ */
 .topology-panel {
-  border-bottom:1px solid var(--border); flex-shrink:0;
-  background:var(--card); overflow:hidden;
-  max-height:0; transition:max-height .4s var(--ease-expo);
+  position:fixed; top:52px; right:16px; z-index:200;
+  width:440px; background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r-xl); box-shadow:var(--s4);
+  opacity:0; pointer-events:none; transform:translateY(-8px) scale(.97);
+  transition:opacity .2s var(--ease), transform .2s var(--ease);
 }
-.topology-panel.open { max-height:260px; }
-.topology-inner { padding:12px 24px 10px; max-width:820px; margin:0 auto; }
+.topology-panel.open {
+  opacity:1; pointer-events:all; transform:translateY(0) scale(1);
+}
+.topology-inner { padding:14px 16px 12px; }
 .topology-hdr {
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
 }
 .topology-title {
   font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--txt-4);
-  display:flex; align-items:center; gap:8px;
+  display:flex; align-items:center; gap:6px;
 }
 .topology-legend {
-  display:flex; align-items:center; gap:12px; font-size:9px; font-weight:600; color:var(--txt-4);
+  display:flex; align-items:center; gap:10px; font-size:9px; font-weight:600; color:var(--txt-4);
 }
 .topo-legend-dot {
-  width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:3px;
+  width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:3px;
 }
 .topo-close-btn {
-  background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px 4px;
-  border-radius:var(--r-sm); font-size:12px; transition:color var(--dt-fast) var(--ease);
+  background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px 6px;
+  border-radius:var(--r-sm); font-size:13px; line-height:1; transition:color var(--dt-fast) var(--ease);
 }
 .topo-close-btn:hover { color:var(--txt-2); }
-#topology-svg { width:100%; height:200px; }
+#topology-svg { width:100%; height:180px; display:block; }
 
 /* SVG node states */
 .topo-node { cursor:default; }
@@ -1359,30 +1363,27 @@ body.presentation-mode .audit-entries { max-height:320px; }
 
       <div class="stream-pill" id="stream-pill">
         <div class="dots"><span></span><span></span><span></span></div>
-        Analyzing cluster
+        Analyzing
       </div>
 
       <!-- Topology map toggle -->
-      <button class="topo-toggle-btn" id="topo-toggle-btn" onclick="toggleTopology()" title="Service Topology Map">
+      <button class="topo-toggle-btn" id="topo-toggle-btn" onclick="toggleTopology()" title="Service topology (F3)">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Topology
       </button>
 
-      <!-- Presentation mode toggle -->
-      <button class="pm-toggle-btn" id="pm-toggle-btn" onclick="togglePresentationMode()" title="Toggle presentation mode">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Stage
-      </button>
-
-      <!-- Replay dropdown — pre-recorded scenarios for offline/rehearsal -->
+      <!-- Demo tools dropdown: Stage + Replay combined -->
       <div class="replay-menu-wrap" id="replay-menu-wrap">
-        <button class="pm-toggle-btn" onclick="toggleReplayMenu()" title="Play a recorded demo scenario">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Replay
+        <button class="pm-toggle-btn" id="pm-toggle-btn" onclick="toggleReplayMenu()" title="Demo tools">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Demo
         </button>
         <div class="replay-dropdown" id="replay-dropdown" style="display:none">
-          <div class="replay-dropdown-item" onclick="triggerReplay('cascade')">⚡ Cascade OOM incident</div>
-          <div class="replay-dropdown-item" onclick="triggerReplay('dangerous-agent')">☠ Dangerous agent (no policy)</div>
+          <div class="replay-dropdown-item" onclick="togglePresentationMode();toggleReplayMenu()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Stage mode (F2)
+          </div>
+          <div class="replay-dropdown-item" onclick="triggerReplay('cascade')">⚡ Replay: cascade OOM (F5)</div>
+          <div class="replay-dropdown-item" onclick="triggerReplay('dangerous-agent')">☠ Replay: dangerous agent (F6)</div>
         </div>
       </div>
 
@@ -1414,49 +1415,60 @@ body.presentation-mode .audit-entries { max-height:320px; }
         </div>
         <button class="topo-close-btn" onclick="toggleTopology()">✕</button>
       </div>
-      <svg id="topology-svg" viewBox="0 0 560 185" xmlns="http://www.w3.org/2000/svg">
+      <svg id="topology-svg" viewBox="0 0 400 175" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="var(--border-2)"/>
+          <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="var(--border-2)"/>
           </marker>
-          <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="#FF3B3B"/>
+          <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#FF3B3B"/>
           </marker>
-          <marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="#FFB800"/>
+          <marker id="arrow-amber" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#FFB800"/>
           </marker>
         </defs>
-        <!-- Edges (drawn first so nodes appear on top) -->
-        <line class="topo-edge" id="edge-tg-os"  x1="280" y1="38"  x2="280" y2="72"/>
-        <line class="topo-edge" id="edge-os-ps"  x1="255" y1="98"  x2="165" y2="135"/>
-        <line class="topo-edge" id="edge-os-ns"  x1="305" y1="98"  x2="395" y2="135"/>
-        <line class="topo-edge" id="edge-ps-as"  x1="140" y1="163" x2="140" y2="155" style="display:none"/>
-        <line class="topo-edge" id="edge-ns-eg"  x1="420" y1="163" x2="420" y2="155" style="display:none"/>
+        <!-- Edges -->
+        <line class="topo-edge" id="edge-tg-os"  x1="200" y1="34"  x2="200" y2="66"/>
+        <line class="topo-edge" id="edge-os-ps"  x1="178" y1="92"  x2="110" y2="125"/>
+        <line class="topo-edge" id="edge-os-ns"  x1="222" y1="92"  x2="290" y2="125"/>
+        <line class="topo-edge" id="edge-ps-as"  x1="82"  y1="142" x2="42"  y2="142"/>
+        <line class="topo-edge" id="edge-ns-eg"  x1="318" y1="142" x2="358" y2="142"/>
 
-        <!-- traffic-gen -->
+        <!-- traffic-gen (top) -->
         <g class="topo-node" id="tnode-traffic-gen">
-          <circle class="topo-node-circle" cx="280" cy="22" r="18"/>
-          <text class="topo-node-label" x="280" y="26">traffic-gen</text>
+          <circle class="topo-node-circle" cx="200" cy="20" r="16"/>
+          <text class="topo-node-label" x="200" y="24">traffic-gen</text>
         </g>
-        <!-- order-service -->
+        <!-- order-service (middle) -->
         <g class="topo-node" id="tnode-order-service">
-          <circle class="topo-node-circle" cx="280" cy="86" r="22"/>
-          <text class="topo-node-label" x="280" y="90">order-svc</text>
+          <circle class="topo-node-circle" cx="200" cy="80" r="20"/>
+          <text class="topo-node-label" x="200" y="83">order</text>
+          <text class="topo-node-label" x="200" y="93" style="font-size:7px;fill:var(--txt-4)">service</text>
         </g>
-        <!-- payment-service -->
+        <!-- payment-service (bottom-left) -->
         <g class="topo-node" id="tnode-payment-service">
-          <circle class="topo-node-circle" cx="140" cy="150" r="22"/>
-          <text class="topo-node-label" x="140" y="154">payment</text>
+          <circle class="topo-node-circle" cx="100" cy="142" r="20"/>
+          <text class="topo-node-label" x="100" y="145">payment</text>
+          <text class="topo-node-label" x="100" y="155" style="font-size:7px;fill:var(--txt-4)">service</text>
         </g>
-        <!-- notification-service -->
+        <!-- notification-service (bottom-right) -->
         <g class="topo-node" id="tnode-notification-service">
-          <circle class="topo-node-circle" cx="420" cy="150" r="22"/>
-          <text class="topo-node-label" x="420" y="154">notif</text>
+          <circle class="topo-node-circle" cx="300" cy="142" r="20"/>
+          <text class="topo-node-label" x="300" y="145">notif</text>
+          <text class="topo-node-label" x="300" y="155" style="font-size:7px;fill:var(--txt-4)">service</text>
         </g>
-        <!-- auth-service (small, below payment) -->
-        <text class="topo-node-label" x="68" y="154" style="fill:var(--txt-4);font-size:8px">→ auth-svc</text>
-        <!-- email-gateway (small, below notification) -->
-        <text class="topo-node-label" x="463" y="154" style="fill:var(--txt-4);font-size:8px">→ email-gw</text>
+        <!-- auth-service (left leaf) -->
+        <g class="topo-node" id="tnode-auth-service">
+          <circle class="topo-node-circle" cx="30" cy="142" r="14"/>
+          <text class="topo-node-label" x="30" y="145" style="font-size:7.5px">auth</text>
+          <text class="topo-node-label" x="30" y="154" style="font-size:7px;fill:var(--txt-4)">svc</text>
+        </g>
+        <!-- email-gateway (right leaf) -->
+        <g class="topo-node" id="tnode-email-gateway">
+          <circle class="topo-node-circle" cx="370" cy="142" r="14"/>
+          <text class="topo-node-label" x="370" y="145" style="font-size:7.5px">email</text>
+          <text class="topo-node-label" x="370" y="154" style="font-size:7px;fill:var(--txt-4)">gateway</text>
+        </g>
       </svg>
     </div>
   </div>
@@ -2518,17 +2530,8 @@ let _presentationMode = false;
 function togglePresentationMode() {
   _presentationMode = !_presentationMode;
   document.body.classList.toggle('presentation-mode', _presentationMode);
-  const btn = $('pm-toggle-btn');
-  if (btn) {
-    btn.title = _presentationMode ? 'Exit presentation mode' : 'Enter presentation mode (stage)';
-  }
   // Auto-expand audit trail in presentation mode
   if (_presentationMode && !_auditOpen) toggleAudit();
-  // Auto-open topology in presentation mode
-  if (_presentationMode) {
-    const panel = $('topology-panel');
-    if (panel && !panel.classList.contains('open')) toggleTopology();
-  }
   toast(_presentationMode ? '🎤 Presentation mode ON — dark theme, large fonts' : 'Presentation mode off');
 }
 
@@ -2582,14 +2585,14 @@ function setTopologyNodeState(serviceId, state) {
 }
 
 function resetTopologyNodeStates() {
-  const services = ['traffic-gen','order-service','payment-service','notification-service'];
+  const services = ['traffic-gen','order-service','payment-service','notification-service','auth-service','email-gateway'];
   services.forEach(s => setTopologyNodeState(s, ''));
   const statusLabel = $('topo-status-label');
   if (statusLabel) statusLabel.textContent = '';
 }
 
 function animateBlastRadius(deploymentName, targetState = 'target') {
-  // Open topology if not open
+  // Open topology on approval (user is actively watching the write action)
   if (!_topoOpen) toggleTopology();
 
   resetTopologyBlast();
@@ -2621,7 +2624,7 @@ function animateBlastRadius(deploymentName, targetState = 'target') {
 }
 
 function resetTopologyBlast() {
-  const services = ['traffic-gen','order-service','payment-service','notification-service'];
+  const services = ['traffic-gen','order-service','payment-service','notification-service','auth-service','email-gateway'];
   services.forEach(s => {
     const node = $(`tnode-${s}`);
     if (node) {
@@ -2637,7 +2640,7 @@ function resetTopologyBlast() {
 
 function updateTopologyFromAlerts(alerts) {
   if (!alerts.length) { resetTopologyNodeStates(); return; }
-  if (!_topoOpen) toggleTopology();
+  // Never auto-open — user opens topology deliberately via button or F3
   const seen = new Set();
   alerts.forEach(a => {
     const name = a.labels?.alertname || '';
