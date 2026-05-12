@@ -55,7 +55,7 @@ def _user_wants_fix(msg: str) -> bool:
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-3-5-haiku-latest"
 MAX_TOKENS = 4096
 FRONTEND = Path(__file__).resolve().parent / "frontend" / "index.html"
 
