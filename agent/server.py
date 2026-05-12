@@ -29,6 +29,30 @@ from pydantic import BaseModel
 from tools import TOOL_DEFINITIONS, TOOL_REGISTRY, PROMETHEUS_URL, ALERTMANAGER_URL
 import policy as _policy
 
+# ── Auto-escalation helpers ──────────────────────────────────────────────────
+
+_WRITE_TOOLS = {"restart_deployment", "scale_deployment"}
+_DIAG_TOOLS  = {
+    "get_alerts", "list_pods", "describe_pod", "get_pod_logs",
+    "prometheus_query", "prometheus_range", "get_events",
+    "get_deployments", "get_node_status", "get_hpa_status",
+}
+_FIX_KEYWORDS = [
+    "fix", "remediat", "repair", "resolv", "recover",
+    "restart", "go ahead", "proceed", "take action", "diagnose and fix",
+]
+_ESCALATION_NUDGE = (
+    "You have completed the diagnosis. Now take immediate action: call "
+    "restart_deployment for the affected deployment. Do not describe what "
+    "you would do — call the tool right now. The policy gate will handle "
+    "operator approval automatically."
+)
+
+
+def _user_wants_fix(msg: str) -> bool:
+    low = msg.lower()
+    return any(k in low for k in _FIX_KEYWORDS)
+
 # ── Config ───────────────────────────────────────────────────────────────────
 
 MODEL = "claude-sonnet-4-6"
@@ -288,8 +312,13 @@ async def _run_tool_with_policy(name: str, tool_input: dict, call_id: str = ""):
     yield _sse("tool_result", {"id": eid, "content": result})
 
 
-async def _anthropic_loop(client: AsyncAnthropic, model: str, work_messages: list[dict]):
+async def _anthropic_loop(client: AsyncAnthropic, model: str, work_messages: list[dict],
+                          orig_user_msg: str = ""):
     """Anthropic agentic loop — yields SSE strings."""
+    diag_count = 0
+    write_count = 0
+    escalated = False
+
     while True:
         tool_calls: list[dict] = []
         accumulated_text = ""
@@ -325,11 +354,23 @@ async def _anthropic_loop(client: AsyncAnthropic, model: str, work_messages: lis
             final_message = await stream.get_final_message()
 
         if final_message.stop_reason != "tool_use":
+            # Auto-escalate: diagnosed but didn't act → inject remediation nudge once
+            if (not escalated and _user_wants_fix(orig_user_msg)
+                    and diag_count >= 2 and write_count == 0):
+                escalated = True
+                work_messages.append({"role": "assistant", "content": final_message.content})
+                work_messages.append({"role": "user", "content": _ESCALATION_NUDGE})
+                yield _sse("text_delta", {"content": "\n\n---\n"})
+                continue
             yield _sse("done", {})
             break
 
         tool_results = []
         for tc in tool_calls:
+            if tc["name"] in _WRITE_TOOLS:
+                write_count += 1
+            elif tc["name"] in _DIAG_TOOLS:
+                diag_count += 1
             result = ""
             async for ev in _run_tool_with_policy(tc["name"], tc.get("input") or {}, tc["id"]):
                 yield ev
@@ -345,7 +386,8 @@ async def _anthropic_loop(client: AsyncAnthropic, model: str, work_messages: lis
         work_messages.append({"role": "user", "content": tool_results})
 
 
-async def _openai_loop(key: str, base_url: str, model: str, work_messages: list[dict]):
+async def _openai_loop(key: str, base_url: str, model: str, work_messages: list[dict],
+                       orig_user_msg: str = ""):
     """OpenAI-compatible agentic loop (OpenRouter / OpenAI / Groq) — yields SSE strings."""
     from openai import AuthenticationError, APIStatusError
     extra_headers: dict = {}
@@ -355,6 +397,10 @@ async def _openai_loop(key: str, base_url: str, model: str, work_messages: list[
     oai_msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + [
         {"role": m["role"], "content": m["content"] or ""} for m in work_messages
     ]
+
+    diag_count = 0
+    write_count = 0
+    escalated = False
 
     while True:
         acc_text = ""
@@ -405,12 +451,24 @@ async def _openai_loop(key: str, base_url: str, model: str, work_messages: list[
                         tc_acc[i]["arguments"] += tc.function.arguments
 
         if finish_reason != "tool_calls" or not tc_acc:
+            # Auto-escalate: diagnosed but didn't act → inject remediation nudge once
+            if (not escalated and _user_wants_fix(orig_user_msg)
+                    and diag_count >= 2 and write_count == 0):
+                escalated = True
+                oai_msgs.append({"role": "assistant", "content": acc_text or None})
+                oai_msgs.append({"role": "user", "content": _ESCALATION_NUDGE})
+                yield _sse("text_delta", {"content": "\n\n---\n"})
+                continue
             yield _sse("done", {})
             break
 
         assistant_tcs = []
         tool_msgs = []
         for i, tc in sorted(tc_acc.items()):
+            if tc["name"] in _WRITE_TOOLS:
+                write_count += 1
+            elif tc["name"] in _DIAG_TOOLS:
+                diag_count += 1
             try:
                 tool_input = json.loads(tc["arguments"]) if tc["arguments"] else {}
             except Exception:
@@ -447,11 +505,18 @@ async def _chat_stream(
         yield _sse("done", {})
         return
 
+    # Extract last user message for auto-escalation detection
+    orig_user_msg = ""
+    for m in reversed(messages):
+        if m.get("role") == "user" and isinstance(m.get("content"), str):
+            orig_user_msg = m["content"]
+            break
+
     # ── Custom / bring-your-own endpoint ────────────────────────────────────
     if base_url:
         use_model = model or "gpt-4o"
         work = [{"role": m["role"], "content": m["content"]} for m in messages]
-        async for chunk in _openai_loop(key, base_url.rstrip("/"), use_model, work):
+        async for chunk in _openai_loop(key, base_url.rstrip("/"), use_model, work, orig_user_msg):
             yield chunk
         return
 
@@ -462,7 +527,7 @@ async def _chat_stream(
         oai_url = _OAI_BASE[provider["id"]]
         use_model = model or "gpt-4o"
         work = [{"role": m["role"], "content": m["content"]} for m in messages]
-        async for chunk in _openai_loop(key, oai_url, use_model, work):
+        async for chunk in _openai_loop(key, oai_url, use_model, work, orig_user_msg):
             yield chunk
         return
 
@@ -471,7 +536,7 @@ async def _chat_stream(
     client = AsyncAnthropic(api_key=ant_key) if ant_key else anthropic
     use_model = model if model and model in ALLOWED_MODELS else MODEL
     work = [{"role": m["role"], "content": m["content"]} for m in messages]
-    async for chunk in _anthropic_loop(client, use_model, work):
+    async for chunk in _anthropic_loop(client, use_model, work, orig_user_msg):
         yield chunk
 
 
@@ -709,6 +774,117 @@ async def alerts_endpoint():
         return {"alerts": data[:10]}
     except Exception:
         return {"alerts": []}
+
+
+@app.get("/api/runbook/execute")
+async def runbook_execute():
+    """
+    Stream a live runbook execution simulation.
+    Shows a static runbook attempting to fix an OOMKill cascade — and failing
+    because it can't diagnose the root cause. Uses real K8s data where available.
+    """
+    async def _stream():
+        def _ev(t, **d):
+            return f"data: {json.dumps({'type': t, **d})}\n\n"
+
+        yield _ev("runbook_start",
+            title="Payment Service CrashLoop Recovery",
+            doc_id="RB-PAYMENT-001", version="v2.3",
+            author="SRE Team", updated="2024-11-15",
+            steps_total=7)
+        await asyncio.sleep(0.9)
+
+        # Step 1 — Verify alert (real data)
+        yield _ev("runbook_step", step=1, title="Verify firing alert",
+                  cmd="kubectl get alerts -n production", status="running")
+        await asyncio.sleep(1.3)
+        try:
+            from tools import get_alerts as _ga
+            alert_out = await _ga()
+        except Exception:
+            alert_out = "PaymentServiceCrashLooping  FIRING  critical"
+        yield _ev("runbook_step_result", step=1, status="ok", output=alert_out[:300])
+        await asyncio.sleep(0.6)
+
+        # Step 2 — Check pods (real data)
+        yield _ev("runbook_step", step=2, title="Check pod health",
+                  cmd="kubectl get pods -n production", status="running")
+        await asyncio.sleep(1.2)
+        try:
+            from tools import list_pods as _lp
+            pods_out = await _lp("production")
+        except Exception:
+            pods_out = "payment-service-7d9f  0/1  CrashLoopBackOff  8  4m\norder-service-5c4d  1/1  Running  0  10m"
+        yield _ev("runbook_step_result", step=2, status="ok", output=pods_out[:400])
+        await asyncio.sleep(0.6)
+
+        # Step 3 — Recent deployments (simulated)
+        yield _ev("runbook_step", step=3, title="Check recent deployments",
+                  cmd="kubectl rollout history deployment/payment-service -n production",
+                  status="running")
+        await asyncio.sleep(1.8)
+        yield _ev("runbook_step_result", step=3, status="ok",
+                  output="REVISION  CHANGE-CAUSE\n1         Initial deploy\n2         Update resource limits  (3 days ago)\n\nNo recent changes detected.")
+        await asyncio.sleep(0.6)
+
+        # Step 4 — Restart (simulated — do NOT actually restart the cluster)
+        yield _ev("runbook_step", step=4, title="Restart the deployment",
+                  cmd="kubectl rollout restart deployment/payment-service -n production",
+                  status="running")
+        await asyncio.sleep(2.0)
+        yield _ev("runbook_step_result", step=4, status="ok",
+                  output="deployment.apps/payment-service restarted\nWaiting for rollout to stabilise…")
+        await asyncio.sleep(0.6)
+
+        # Step 5 — Verify recovery with live countdown
+        countdown = 10
+        yield _ev("runbook_step", step=5, title="Verify recovery",
+                  cmd=f"sleep {countdown} && kubectl get pods -n production",
+                  status="running", countdown=countdown)
+        for rem in range(countdown - 1, -1, -1):
+            await asyncio.sleep(1.0)
+            yield _ev("runbook_countdown", step=5, remaining=rem)
+
+        try:
+            from tools import list_pods as _lp2
+            pods_out2 = await _lp2("production")
+        except Exception:
+            pods_out2 = "payment-service-8e3a  0/1  OOMKilled  1  12s\npayment-service-8e3a  0/1  CrashLoopBackOff  1  16s"
+        yield _ev("runbook_step_result", step=5, status="fail",
+                  output=pods_out2[:400] + "\n\n⚠  OOMKilled (exit code 137) — still crashing!")
+        await asyncio.sleep(0.8)
+
+        # Step 6 — Second restart attempt (simulated)
+        yield _ev("runbook_step", step=6, title="Restart attempt #2",
+                  cmd="kubectl rollout restart deployment/payment-service -n production",
+                  status="running")
+        await asyncio.sleep(2.0)
+        try:
+            from tools import list_pods as _lp3
+            pods_out3 = await _lp3("production")
+        except Exception:
+            pods_out3 = "payment-service-9f1b  0/1  OOMKilled  1  8s"
+        yield _ev("runbook_step_result", step=6, status="fail",
+                  output=pods_out3[:300] + "\n\nRestart count: 10. OOMKilled (exit 137) on every attempt.")
+        await asyncio.sleep(0.8)
+
+        # Step 7 — Escalation threshold
+        yield _ev("runbook_step", step=7, title="Escalation threshold check",
+                  cmd="# if restart_count > 5: escalate_to_oncall()", status="running")
+        await asyncio.sleep(1.2)
+        yield _ev("runbook_step_result", step=7, status="fail",
+                  output="restart_count = 10  (threshold = 5)\nCondition: ESCALATE\nRunbook exits — cannot determine root cause.")
+        await asyncio.sleep(0.8)
+
+        yield _ev("runbook_fail",
+                  reason="Restart loop: exit code 137 (OOMKilled) on every attempt.",
+                  root_cause="UNKNOWN — the runbook can't ask WHY",
+                  restarts=10, runtime_s=countdown + 22)
+
+    return StreamingResponse(
+        _stream(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 RECORDINGS_DIR = Path(__file__).parent / "demo-recordings"
