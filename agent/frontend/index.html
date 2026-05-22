@@ -530,6 +530,14 @@ a,button,[role=button] { transition:var(--dt-fast) var(--ease); }
 .send-btn:active { transform:scale(.94); }
 .send-btn:disabled { background:var(--card-3); color:var(--txt-4); cursor:not-allowed; transform:none; box-shadow:none; }
 .send-btn svg { width:16px; height:16px; }
+.stop-btn {
+  width:36px; height:36px; border-radius:var(--r-lg); flex-shrink:0;
+  background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.35); cursor:pointer;
+  display:none; align-items:center; justify-content:center;
+  color:var(--red); transition:all var(--dt-fast) var(--ease-spring);
+}
+.stop-btn:hover { background:rgba(239,68,68,.25); transform:translateY(-1px); }
+.stop-btn svg { width:14px; height:14px; }
 .input-footer { max-width:820px; margin:7px auto 0; display:flex; justify-content:space-between; align-items:center; }
 .input-hint { font-size:11px; color:var(--txt-4); display:flex; align-items:center; gap:6px; }
 .kbd {
@@ -1838,6 +1846,9 @@ body.presentation-mode .audit-entries { max-height:320px; }
           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
         </svg>
       </button>
+      <button class="stop-btn" id="stop-btn" onclick="stopStream()" title="Stop">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      </button>
     </div>
     <div class="input-footer">
       <div class="input-hint">
@@ -1872,6 +1883,7 @@ const DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let streaming = false;
+let _streamAbort = null;
 let msgs = [];
 let convs = [];
 let activeConv = null;
@@ -1901,7 +1913,15 @@ const $ = id => document.getElementById(id);
 
 // ── Input helpers ─────────────────────────────────────────────────────────────
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; }
-function updateSendBtn() { $('send-btn').disabled = !$('input').value.trim() || streaming; }
+function updateSendBtn() {
+  $('send-btn').disabled = !$('input').value.trim() || streaming;
+  const stop = $('stop-btn');
+  if (stop) stop.style.display = streaming ? 'flex' : 'none';
+}
+function stopStream() {
+  if (_streamAbort) { _streamAbort.abort(); _streamAbort = null; }
+  setStreaming(false);
+}
 function onKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }
 function qp(text) {
   if (streaming) return;
@@ -2330,9 +2350,11 @@ async function chat(text) {
   scrollBottom(); setStreaming(true);
   let rawText = '';
   const cards = {};
+  _streamAbort = new AbortController();
   try {
     const res = await fetch('/api/chat',{
       method:'POST', headers:{'Content-Type':'application/json'},
+      signal: _streamAbort.signal,
       body: JSON.stringify({messages:msgs, api_key:savedKey, model:savedModel, ...(savedBaseUrl ? {base_url:savedBaseUrl} : {})}),
     });
     if (!res.ok) { appendErr(agentEl,`Server error ${res.status}`); return; }
@@ -2364,8 +2386,9 @@ async function chat(text) {
       }
       scrollBottom();
     }
-  } catch(e) { appendErr(agentEl,`Network error: ${e.message}`); }
+  } catch(e) { if (e.name !== 'AbortError') appendErr(agentEl,`Network error: ${e.message}`); }
   finally {
+    _streamAbort = null;
     setStreaming(false);
     const raw = agentEl.querySelector('.raw-text');
     if (raw && rawText) {
