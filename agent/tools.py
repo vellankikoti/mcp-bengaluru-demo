@@ -16,11 +16,11 @@ from kubernetes.client.exceptions import ApiException
 
 IN_CLUSTER = os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount/token")
 
-# Default URLs (in-cluster or kind-mcp-demo)
+# Observability endpoints — always via local port-forwards (start.sh binds these)
 PROMETHEUS_URL = (
     "http://kube-prometheus-stack-prometheus.observability:9090"
     if IN_CLUSTER
-    else "http://localhost:9090"
+    else "http://localhost:9092"
 )
 ALERTMANAGER_URL = (
     "http://kube-prometheus-stack-alertmanager.observability:9093"
@@ -28,40 +28,47 @@ ALERTMANAGER_URL = (
     else "http://localhost:9093"
 )
 
-# Per-context observability endpoints (local port-forwards)
-_CONTEXT_OBSERVABILITY: dict = {
-    "kind-mcp-demo": {
-        "prometheus":    "http://localhost:9092",
-        "alertmanager":  "http://localhost:9093",
-        "grafana":       "http://localhost:3002",
-    },
-    "docker-desktop": {
-        "prometheus":    "http://localhost:9091",
-        "alertmanager":  "http://localhost:9094",
-        "grafana":       "http://localhost:3001",
-    },
-}
-
 
 def get_observability_urls() -> dict:
-    """Return the prometheus/alertmanager/grafana URLs for the active context."""
+    """Return prometheus/alertmanager/grafana URLs.
+    Outside the cluster these are always the local port-forwards started by start.sh.
+    """
     if IN_CLUSTER:
         return {
             "prometheus":   PROMETHEUS_URL,
             "alertmanager": ALERTMANAGER_URL,
             "grafana":      "http://localhost:3000",
         }
-    return _CONTEXT_OBSERVABILITY.get(_active_context, {
-        "prometheus":   PROMETHEUS_URL,
-        "alertmanager": ALERTMANAGER_URL,
-        "grafana":      "http://localhost:3000",
-    })
+    return {
+        "prometheus":   "http://localhost:9092",
+        "alertmanager": "http://localhost:9093",
+        "grafana":      "http://localhost:3002",
+    }
 
-_active_context: str = os.environ.get("KUBE_CONTEXT", "kind-mcp-demo")
+
+def _default_context() -> str:
+    """Return the current kubectl context, or empty string if none."""
+    env_ctx = os.environ.get("KUBE_CONTEXT", "")
+    if env_ctx:
+        return env_ctx
+    try:
+        import subprocess
+        return subprocess.check_output(
+            ["kubectl", "config", "current-context"], text=True
+        ).strip()
+    except Exception:
+        return ""
+
+
+_active_context: str = _default_context()
 
 
 def _kubeconfig_path() -> str:
-    return os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/mcp-demo.yaml"))
+    # Use KUBECONFIG env var if set; otherwise default kubeconfig location
+    kc = os.environ.get("KUBECONFIG", "")
+    if kc:
+        return kc.split(":")[0]  # first path if colon-separated
+    return os.path.expanduser("~/.kube/config")
 
 
 def _init_k8s(context: str = "") -> None:

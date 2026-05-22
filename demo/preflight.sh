@@ -9,8 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 AGENT_DIR="$ROOT/agent"
-KUBECONFIG_PATH="${HOME}/.kube/mcp-demo.yaml"
-CTX="kind-mcp-demo"
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
 AGENT_PORT="${PORT:-8082}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -34,50 +33,48 @@ echo "╔═══════════════════════�
 echo "║  PREFLIGHT CHECK — Conference Demo Safety    ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
-echo "  Target: kind cluster '${CTX}'"
-echo "  Time:   $(date)"
+echo "  Context: ${CTX:-<none>}"
+echo "  Time:    $(date)"
 
 # ── 1. REQUIRED TOOLS ────────────────────────────────────────────────────────
 section "Required Tools"
-for cmd in kind kubectl docker helm python3 curl lsof; do
+for cmd in kubectl helm python3 curl lsof; do
   if command -v "$cmd" &>/dev/null; then
     pass "$cmd found ($(command -v $cmd))"
   else
     fail "$cmd not found — install it before presenting"
   fi
 done
+# Optional tools — warn only
+for cmd in docker kind; do
+  if command -v "$cmd" &>/dev/null; then
+    pass "$cmd found ($(command -v $cmd)) — optional"
+  else
+    warn "$cmd not found — only needed to create a new cluster. Skip if using existing cluster."
+  fi
+done
 
-# ── 2. DOCKER ────────────────────────────────────────────────────────────────
-section "Docker"
-if docker info &>/dev/null; then
-  pass "Docker daemon running"
+# ── 2. KUBERNETES CLUSTER ────────────────────────────────────────────────────
+section "Kubernetes Cluster"
+if [[ -z "$CTX" ]]; then
+  fail "No kubectl context found — set KUBECONFIG or KUBE_CONTEXT"
 else
-  fail "Docker is not running — 'make up' will fail"
+  pass "kubectl context: $CTX"
 fi
 
-# ── 3. KIND CLUSTER ──────────────────────────────────────────────────────────
-section "Kind Cluster"
-if kind get clusters 2>/dev/null | grep -q "^mcp-demo$"; then
-  pass "kind cluster 'mcp-demo' exists"
-else
-  fail "kind cluster 'mcp-demo' not found — run: make up"
-fi
-
-# Check kubeconfig
-if [[ -f "$KUBECONFIG_PATH" ]]; then
-  pass "kubeconfig exists at $KUBECONFIG_PATH"
-else
-  fail "kubeconfig missing at $KUBECONFIG_PATH — run: make up"
-fi
-
-export KUBECONFIG="$KUBECONFIG_PATH"
 K="kubectl --context=${CTX}"
 
-# Node ready
-if $K get nodes --no-headers 2>/dev/null | grep -q "Ready"; then
-  pass "cluster node Ready"
+if $K cluster-info &>/dev/null 2>&1; then
+  pass "cluster reachable"
 else
-  fail "cluster node not Ready"
+  fail "cluster not reachable — check KUBECONFIG and cluster status"
+fi
+
+if $K get nodes --no-headers 2>/dev/null | grep -q "Ready"; then
+  NODE_COUNT=$($K get nodes --no-headers 2>/dev/null | grep -c "Ready" || true)
+  pass "$NODE_COUNT node(s) Ready"
+else
+  fail "no Ready nodes found"
 fi
 
 # ── 4. PRODUCTION PODS ───────────────────────────────────────────────────────

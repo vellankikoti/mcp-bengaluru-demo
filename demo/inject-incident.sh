@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
+# inject-incident.sh — Fault injection for the demo
+# Works with any kubectl context.
+#
+# Env overrides:
+#   KUBE_CONTEXT — kubectl context to use (default: current context)
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
-CLUSTER_NAME="mcp-demo"
-CTX="kind-${CLUSTER_NAME}"
-KUBECONFIG_PATH="${HOME}/.kube/mcp-demo.yaml"
-export KUBECONFIG="$KUBECONFIG_PATH"
+
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
+[[ -z "$CTX" ]] && { echo "ERROR: No kubectl context. Set KUBECONFIG or KUBE_CONTEXT."; exit 1; }
 
 K="kubectl --context=${CTX}"
 
@@ -109,7 +113,9 @@ data:
 with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
     f.write(broken)
     fname = f.name
-result = subprocess.run(['kubectl', '--context=kind-mcp-demo', 'apply', '-f', fname], capture_output=True, text=True)
+import os
+ctx = os.environ.get('KUBE_CONTEXT') or subprocess.check_output(['kubectl','config','current-context'], text=True).strip()
+result = subprocess.run(['kubectl', f'--context={ctx}', 'apply', '-f', fname], capture_output=True, text=True)
 os.unlink(fname)
 if result.returncode != 0:
     print(f"FAIL: {result.stderr}")

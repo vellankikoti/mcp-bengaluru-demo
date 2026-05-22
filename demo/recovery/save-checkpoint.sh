@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CTX="kind-mcp-demo"
-export KUBECONFIG="${HOME}/.kube/mcp-demo.yaml"
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
+if [[ -z "$CTX" ]]; then
+  echo "[checkpoint] No kubectl context — skipping checkpoint."
+  exit 0
+fi
 CHECKPOINT="/tmp/mcp-demo-checkpoint"
 mkdir -p "$CHECKPOINT"
 

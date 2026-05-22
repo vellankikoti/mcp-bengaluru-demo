@@ -1,30 +1,44 @@
 # INSTALL.md
-# From zero to demo-ready on a new machine
+# From zero to demo-ready on any machine
 
-This document assumes you have never seen this repo. Every command is verified.
-Follow every step in order. Do not skip.
+This document works with any Kubernetes cluster — local (kind) or existing (kubeadm, GKE, EKS,
+KillerCoda, etc.). Every command is verified. Follow every step in order.
 
 ---
 
-## Prerequisites — install these first
+## Prerequisites
 
-| Tool | Install command | Verify |
-|---|---|---|
-| Docker Desktop | https://docs.docker.com/desktop/mac/install/ | `docker version` |
-| Homebrew | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` | `brew --version` |
-| kind | `brew install kind` | `kind version` |
-| kubectl | `brew install kubectl` | `kubectl version --client` |
-| helm | `brew install helm` | `helm version --short` |
-| Python 3.9+ | Pre-installed on macOS, or `brew install python@3.11` | `python3 --version` |
+### Required (always)
 
-**Expected after prerequisites:**
+| Tool | Install — macOS | Install — Ubuntu/Debian | Verify |
+|---|---|---|---|
+| kubectl | `brew install kubectl` | `apt install kubectl` or via k8s docs | `kubectl version --client` |
+| helm | `brew install helm` | `snap install helm --classic` | `helm version --short` |
+| Python 3.9+ | `brew install python@3.11` | `apt install python3 python3-venv` | `python3 --version` |
+| git | Pre-installed | `apt install git` | `git --version` |
+
+### Required for a new cluster (skip if you have one already)
+
+| Tool | Install — macOS | Install — Linux | Verify |
+|---|---|---|---|
+| Docker | Docker Desktop | `apt install docker.io` | `docker version` |
+| kind | `brew install kind` | See kind.sigs.k8s.io | `kind version` |
+
+> **KillerCoda / existing cluster**: you already have a cluster. You do NOT need kind or Docker.
+> Jump straight to STEP 1.
+
+### Your cluster
+
+Any of these work:
+- `kind` cluster (created by `make up` if kind is installed)
+- KillerCoda playground (`kubectl get nodes` already works)
+- kubeadm, GKE, EKS, AKS, minikube — any cluster where you have admin access
+
+**Verify your cluster is reachable before proceeding:**
+```bash
+kubectl get nodes
 ```
-docker version → Client: 29.x.x  Server: 29.x.x
-kind version   → kind v0.29.0 go1.24.3 darwin/arm64
-kubectl        → Client Version: v1.34.x
-helm version   → v3.19.x
-python3        → Python 3.9.x (or newer)
-```
+Expected: at least one node in `Ready` state.
 
 ---
 
@@ -89,30 +103,29 @@ python3 -c "import fastapi, anthropic, uvicorn, httpx, kubernetes, pydantic; pri
 
 ---
 
-## STEP 3 — Bootstrap the cluster
+## STEP 3 — Bootstrap the demo environment
 
 **Command:**
 ```bash
 make up
 ```
 
-**What this does:** Creates a kind cluster named `mcp-demo`, builds 6 Docker images,
-installs kube-prometheus-stack via Helm, applies RBAC, deploys all services.
+**What this does (cluster-agnostic):**
+- If `kubectl get nodes` already works → uses your existing cluster
+- If `kind` is installed and no cluster exists → creates a kind cluster
+- Deploys 6 microservices, installs kube-prometheus-stack via Helm, applies RBAC
 
-**Expected time:** 5–8 minutes
-
-**Expected output (key lines):**
+**Expected output (existing cluster path):**
 ```
 ╔══════════════════════════════════════════════╗
 ║    MCP Demo Environment Bootstrap            ║
 ╚══════════════════════════════════════════════╝
-[bootstrap] Checking prerequisites...
-[ok] All prerequisites satisfied
-[bootstrap] Creating kind cluster 'mcp-demo'...
-[ok] Cluster created
-[ok] KUBECONFIG exported to ~/.kube/mcp-demo.yaml
+[bootstrap] Using existing cluster: context=<your-context>
 [ok] Namespaces and RBAC ready
 [bootstrap] Building service images...
+[ok] All images built
+[ok] Image loading complete
+[ok] Services deployed
 [ok] Observability stack installed
 [ok] Alert rules applied
 [ok] Dashboards loaded
@@ -121,6 +134,10 @@ installs kube-prometheus-stack via Helm, applies RBAC, deploys all services.
 ║  Demo environment ready!                         ║
 ╚══════════════════════════════════════════════════╝
 ```
+
+**Expected time:**
+- Existing cluster: 5–8 minutes (Helm install dominates)
+- New kind cluster: 8–12 minutes
 
 **Verify:**
 ```bash
@@ -132,9 +149,9 @@ make smoke
 ```
 
 **Troubleshoot:**
-- `kind: command not found` → `brew install kind`
+- `No reachable cluster found and kind is not installed` → ensure your cluster is reachable: `kubectl get nodes`
 - `helm timeout` → re-run `make up` (Helm is idempotent)
-- `Docker: permission denied` → make sure Docker Desktop is running
+- `ImagePullBackOff` on pods → Docker not available for image build; see README for alternative
 - `make smoke` shows `payment-service available: FAIL` → run `make recover && make smoke`
 
 ---

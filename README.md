@@ -7,23 +7,32 @@
 
 ## One-time Setup
 
-Do this **before** the day of the talk. Takes ~10 minutes.
+Works with **any Kubernetes cluster** — kind, kubeadm, KillerCoda, GKE, EKS, etc.
 
-### 1. Install prerequisites
+### 1. Prerequisites
 
-| Tool | Version | Install |
+**Always required:**
+
+| Tool | macOS | Ubuntu/Debian |
 |---|---|---|
-| Docker | running | [docker.com](https://docker.com) |
-| kind | ≥ 0.23 | `brew install kind` |
-| kubectl | ≥ 1.29 | `brew install kubectl` |
-| helm | ≥ 3.14 | `brew install helm` |
-| Python | ≥ 3.11 | `brew install python@3.11` |
+| kubectl | `brew install kubectl` | `apt install kubectl` |
+| helm | `brew install helm` | `snap install helm --classic` |
+| Python ≥ 3.9 | `brew install python@3.11` | `apt install python3 python3-venv` |
 
-### 2. Bootstrap the cluster
+**Only needed to create a new cluster (skip if you already have one):**
+
+| Tool | macOS | Linux |
+|---|---|---|
+| Docker | [docker.com](https://docker.com) | `apt install docker.io` |
+| kind | `brew install kind` | [kind.sigs.k8s.io](https://kind.sigs.k8s.io) |
+
+> **KillerCoda / existing cluster**: verify `kubectl get nodes` shows Ready nodes, then skip straight to step 2.
+
+### 2. Bootstrap the demo
 
 ```bash
-make up          # creates kind cluster + installs Prometheus/Grafana/Alertmanager (~5 min)
-make smoke       # verify all 9 pods are Running and observability is reachable
+make up          # uses existing cluster, or creates kind cluster if none found (~5-8 min)
+make smoke       # verify all pods Running and observability reachable
 ```
 
 ### 3. Install Python dependencies

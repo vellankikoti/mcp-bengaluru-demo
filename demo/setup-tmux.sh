@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CTX="kind-mcp-demo"
-export KUBECONFIG="${HOME}/.kube/mcp-demo.yaml"
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
+[[ -z "$CTX" ]] && { echo "ERROR: No kubectl context. Set KUBECONFIG or KUBE_CONTEXT."; exit 1; }
 
 SESSION="mcp-demo"
 tmux kill-session -t "$SESSION" 2>/dev/null || true
@@ -78,9 +78,9 @@ tmux send-keys -t "${SESSION}:1.4" \
   Grafana    → http://localhost:3000
   Prometheus → http://localhost:9090
 
-  KUBECONFIG
+  CLUSTER CONTEXT
   ──────────────────────────────────
-  export KUBECONFIG=~/.kube/mcp-demo.yaml
+  Current: $CTX
 
 HELP" Enter
 

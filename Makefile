@@ -1,14 +1,26 @@
 .PHONY: up down reset smoke agent inject-oom inject-retry inject-cascade inject-dns recover setup-tmux checkpoint preflight test
 
-CLUSTER_NAME := mcp-demo
-KUBECONFIG_PATH := $(HOME)/.kube/mcp-demo.yaml
-CONTEXT := kind-$(CLUSTER_NAME)
+# Cluster-agnostic: uses current kubectl context by default.
+# Override: make up KUBE_CONTEXT=my-context
+# To create a new kind cluster: ensure kind is installed, then make up
+KUBE_CONTEXT ?= $(shell kubectl config current-context 2>/dev/null || echo "")
+
+export KUBE_CONTEXT
 
 up:
 	@bash demo/bootstrap.sh
 
 down:
-	kind delete cluster --name $(CLUSTER_NAME)
+	@if command -v kind >/dev/null 2>&1 && kind get clusters 2>/dev/null | grep -q mcp-demo; then \
+	  echo "Deleting kind cluster mcp-demo..."; \
+	  kind delete cluster --name mcp-demo; \
+	else \
+	  echo "Removing demo namespaces from cluster (context: $(KUBE_CONTEXT))..."; \
+	  kubectl --context=$(KUBE_CONTEXT) delete namespace production mcp-system --ignore-not-found 2>/dev/null || true; \
+	  kubectl --context=$(KUBE_CONTEXT) delete namespace observability --ignore-not-found 2>/dev/null || true; \
+	  kubectl --context=$(KUBE_CONTEXT) delete clusterrolebinding mcp-incident-agent --ignore-not-found 2>/dev/null || true; \
+	  echo "Demo resources removed. Cluster itself is unchanged."; \
+	fi
 
 reset:
 	@bash demo/reset.sh

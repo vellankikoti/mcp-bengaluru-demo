@@ -2,8 +2,8 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
-CTX="kind-mcp-demo"
-export KUBECONFIG="${HOME}/.kube/mcp-demo.yaml"
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
+[[ -z "$CTX" ]] && { echo "ERROR: No kubectl context. Set KUBECONFIG or KUBE_CONTEXT."; exit 1; }
 K="kubectl --context=${CTX}"
 
 echo "⚡ EMERGENCY RESET — 30 second rebuild"

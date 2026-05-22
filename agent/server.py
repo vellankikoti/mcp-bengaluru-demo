@@ -62,7 +62,7 @@ FRONTEND = Path(__file__).resolve().parent / "frontend" / "index.html"
 SYSTEM_PROMPT = """You are an expert Kubernetes SRE agent operating on a live demo cluster for a conference talk on AI-assisted incident response. You diagnose incidents, trace root causes, and recommend remediations with precision.
 
 CLUSTER CONTEXT:
-- Cluster: kind-mcp-demo (single-node kind, Kubernetes 1.33)
+- Cluster: active kubectl context (auto-detected)
 - Namespace in focus: production
 - Services:
   • payment-service  — payment processing, FAULT_MODE: healthy/oom/error/slow/error_rate

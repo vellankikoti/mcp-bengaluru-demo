@@ -2,14 +2,13 @@
 # Applies all Grafana dashboard JSONs as labelled ConfigMaps.
 # Idempotent — safe to re-run. The Grafana sidecar picks them up within ~5s.
 # Env overrides:
-#   KUBE_CONTEXT   (default: kind-mcp-demo)
-#   KUBECONFIG     (default: ~/.kube/mcp-demo.yaml)
-#   GRAFANA_URL    (default: http://localhost:3000)
+#   KUBE_CONTEXT   (default: current kubectl context)
+#   GRAFANA_URL    (default: http://localhost:3002)
 set -euo pipefail
 
-CTX="${KUBE_CONTEXT:-kind-mcp-demo}"
-export KUBECONFIG="${KUBECONFIG:-${HOME}/.kube/mcp-demo.yaml}"
-GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
+CTX="${KUBE_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo "")}"
+[[ -z "$CTX" ]] && { echo "ERROR: No kubectl context. Set KUBE_CONTEXT."; exit 1; }
+GRAFANA_URL="${GRAFANA_URL:-http://localhost:3002}"
 K="kubectl --context=${CTX}"
 
 DASHBOARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/grafana/dashboards" && pwd)"
@@ -54,10 +53,11 @@ with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
     f.write(yaml_content)
     fname = f.name
 
-env = {**os.environ}
+ctx = os.environ.get("KUBE_CONTEXT") or subprocess.check_output(
+    ["kubectl", "config", "current-context"], text=True).strip()
 result = subprocess.run(
-    ["kubectl", "--context=${CTX}", "apply", "-f", fname],
-    capture_output=True, text=True, env=env
+    ["kubectl", f"--context={ctx}", "apply", "-f", fname],
+    capture_output=True, text=True
 )
 os.unlink(fname)
 if result.returncode != 0:
