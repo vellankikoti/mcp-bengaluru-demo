@@ -56,4 +56,4 @@ preflight:
 	@bash demo/preflight.sh
 
 test:
-	@python3 -m pytest tests/test_policy.py tests/test_recordings.py tests/test_tools_schema.py -v --tb=short --asyncio-mode=auto
+	@python3 -m pytest tests/ -v --tb=short --asyncio-mode=auto
