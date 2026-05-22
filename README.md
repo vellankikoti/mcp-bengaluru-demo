@@ -29,8 +29,12 @@ make smoke       # verify all 9 pods are Running and observability is reachable
 ### 3. Install Python dependencies
 
 ```bash
-python3 -m pip install -r agent/requirements.txt
+python3 -m venv venv
+source venv/bin/activate
+pip install -r agent/requirements.txt
 ```
+
+> Activate the venv in every new terminal: `source venv/bin/activate`
 
 ### 4. Add your API key
 

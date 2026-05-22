@@ -95,7 +95,7 @@ If it exits 1 — read the CRITICAL failures and apply the recovery command prin
 ### Section 10: Python Dependencies
 | Check | Success output | Failure output | Recovery |
 |---|---|---|---|
-| Each of 6 packages | `✓ fastapi importable`, etc. | `✗ CRITICAL X not installed` | `python3 -m pip install -r agent/requirements.txt` |
+| Each of 6 packages | `✓ fastapi importable`, etc. | `✗ CRITICAL X not installed` | `source venv/bin/activate && pip install -r agent/requirements.txt` |
 
 ### Section 11: Ports
 | Check | Success output | Failure output | Recovery |

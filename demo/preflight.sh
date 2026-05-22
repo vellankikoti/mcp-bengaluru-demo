@@ -217,7 +217,7 @@ for pkg in fastapi anthropic uvicorn httpx kubernetes pydantic; do
     pass "$pkg importable"
   else
     MISSING_DEPS+=("$pkg")
-    fail "$pkg not installed — run: pip install -r agent/requirements.txt"
+    fail "$pkg not installed — run: source venv/bin/activate && pip install -r agent/requirements.txt"
   fi
 done
 

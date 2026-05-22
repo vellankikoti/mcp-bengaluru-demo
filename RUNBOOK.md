@@ -14,8 +14,9 @@ make up        # ~5 min: creates kind cluster + observability + services
 # 2. Verify everything
 make smoke     # must show "All 20 checks passed"
 
-# 3. Install Python deps
-python3 -m pip install -r agent/requirements.txt
+# 3. Install Python deps (run once; activate venv in every new terminal)
+python3 -m venv venv && source venv/bin/activate
+pip install -r agent/requirements.txt
 
 # 4. Set API key
 echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env
@@ -41,7 +42,7 @@ make recover        # clean up
 □ Docker running (check Docker Desktop taskbar)
 □ make up  — if cluster was off since yesterday
 □ make smoke  — must pass all 20 checks
-□ python3 -m pip install -r agent/requirements.txt  — if deps may have changed
+□ source venv/bin/activate && pip install -r agent/requirements.txt  — if deps may have changed
 □ agent/.env has ANTHROPIC_API_KEY (or have key ready to paste)
 ```
 

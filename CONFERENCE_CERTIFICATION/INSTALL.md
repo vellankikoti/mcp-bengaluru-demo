@@ -52,11 +52,13 @@ ls agent/ demo/ cluster/ tests/ Makefile README.md
 
 ---
 
-## STEP 2 — Install Python dependencies
+## STEP 2 — Create virtualenv and install Python dependencies
 
-**Command:**
+**Commands:**
 ```bash
-python3 -m pip install -r agent/requirements.txt
+python3 -m venv venv
+source venv/bin/activate
+pip install -r agent/requirements.txt
 ```
 
 **Expected output:**
@@ -73,9 +75,17 @@ python3 -c "import fastapi, anthropic, uvicorn, httpx, kubernetes, pydantic; pri
 
 **Expected time:** 30–60 seconds
 
+> **IMPORTANT — activate the venv in every new terminal before running any commands:**
+> ```bash
+> source venv/bin/activate
+> ```
+> Your prompt will show `(venv)` when active. All `make` commands, `python3`, and `pytest` run
+> from inside this directory require the venv to be active.
+
 **Troubleshoot:**
-- `pip: command not found` → use `pip3` or `python3 -m pip`
-- Permission denied → add `--user` flag
+- `externally-managed-environment` error → you skipped the venv step. Run `python3 -m venv venv && source venv/bin/activate` first.
+- `python3 -m venv` fails → install: `apt install python3-venv` (Debian/Ubuntu) or `brew install python@3.11` (macOS)
+- Permission denied → do not use `sudo`; venv installs into the local directory
 
 ---
 
@@ -252,8 +262,8 @@ Note: E2E metrics tests (test_e01–e05) require port-forwards running.
 If port-forwards are not running, these 5 tests skip automatically.
 
 **Troubleshoot:**
-- `ModuleNotFoundError: kubernetes` → re-run `python3 -m pip install -r agent/requirements.txt`
-- `asyncio` errors → ensure pytest-asyncio is installed: `python3 -m pip install pytest-asyncio`
+- `ModuleNotFoundError: kubernetes` → venv not active. Run `source venv/bin/activate` then retry.
+- `asyncio` errors → venv not active, or: `pip install pytest-asyncio` inside the venv.
 
 ---
 
@@ -279,7 +289,7 @@ http://localhost:8082?mode=presentation
 |---|---|
 | Prerequisites | 10–15 min (once per machine) |
 | `make up` (bootstrap) | 5–8 min |
-| `python3 -m pip install` | 1 min |
+| `python3 -m venv venv && pip install` | 1 min |
 | `make agent` | 5 sec |
 | `bash demo/preflight.sh` | 30 sec |
 | **Total (after prerequisites)** | **~10 min** |

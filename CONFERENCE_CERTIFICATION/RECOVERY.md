@@ -228,11 +228,19 @@ Expected: `42` and `10`
 - Tests fail with `ModuleNotFoundError`
 - Agent fails to start
 
-**Root cause:** Wrong Python environment, packages not installed.
+**Root cause:** Wrong Python environment, venv not active, or packages not installed.
 
 **Fix:**
 ```bash
-python3 -m pip install -r agent/requirements.txt
+source venv/bin/activate
+pip install -r agent/requirements.txt
+```
+
+If venv doesn't exist yet:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r agent/requirements.txt
 ```
 
 **Verify:**
@@ -302,7 +310,7 @@ Use when: cluster gone, Docker images deleted, complete environment loss.
 
 ```bash
 make down && make up
-python3 -m pip install -r agent/requirements.txt
+source venv/bin/activate && pip install -r agent/requirements.txt
 make smoke
 make agent
 bash demo/preflight.sh
