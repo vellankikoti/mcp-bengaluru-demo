@@ -230,13 +230,13 @@ make agent
 
 **Expected output:**
 ```
-[agent] Loaded ANTHROPIC_API_KEY from .env
+[agent] Loaded .env from /path/to/agent/.env
+[agent] Cluster context: <your-context>
 [agent] Starting Prometheus port-forward → localhost:9092
 [agent] Starting Alertmanager port-forward → localhost:9093
 [agent] Starting Grafana port-forward → localhost:3002
 [agent] Starting MCP Incident Agent on http://localhost:8082
-[agent] Cluster:  kind-mcp-demo (kubeconfig: ~/.kube/mcp-demo.yaml:...)
-[agent] Model:    configurable in browser UI (default: claude-3.5-haiku via OpenRouter)
+[agent] Context:     <your-context>
 [agent] Prometheus   → http://localhost:9092
 [agent] Alertmanager → http://localhost:9093
 [agent] Grafana      → http://localhost:3002
@@ -248,6 +248,9 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8082 (Press CTRL+C to quit)
 ```
+
+> Port-forward lines only appear if they are not already running. If you re-run `make agent`, existing port-forwards are reused silently.
+> If no `.env` file is set, the loaded line is replaced with a prompt to enter your key in the browser UI.
 
 **Expected time:** 3–5 seconds
 

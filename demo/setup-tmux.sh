@@ -35,7 +35,7 @@ tmux send-keys -t "${SESSION}:1.2" \
 
 # Pane 3 (bottom-left): Prometheus alerts live
 tmux send-keys -t "${SESSION}:1.3" \
-  "watch -n3 'curl -s http://localhost:9090/api/v1/alerts 2>/dev/null | \
+  "watch -n3 'curl -s http://localhost:9092/api/v1/alerts 2>/dev/null | \
    python3 -c \"
 import json,sys,time
 try:
@@ -75,8 +75,8 @@ tmux send-keys -t "${SESSION}:1.4" \
 
   OBSERVE
   ──────────────────────────────────
-  Grafana    → http://localhost:3000
-  Prometheus → http://localhost:9090
+  Grafana    → http://localhost:3002
+  Prometheus → http://localhost:9092
 
   CLUSTER CONTEXT
   ──────────────────────────────────

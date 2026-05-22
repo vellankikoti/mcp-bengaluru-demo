@@ -81,7 +81,7 @@ deployment.apps/payment-service resource requirements updated
 
 **Verify badge appeared:**
 ```bash
-KUBECONFIG=~/.kube/mcp-demo.yaml kubectl --context=kind-mcp-demo -n production get pods --no-headers | grep payment
+kubectl -n production get pods --no-headers | grep payment
 ```
 **Expected:** `payment-service-XXX   0/1   CrashLoopBackOff   1   60s`
 
@@ -211,7 +211,7 @@ Point to blast radius:
 
 **VERIFY (terminal — optional if confident):**
 ```bash
-KUBECONFIG=~/.kube/mcp-demo.yaml kubectl --context=kind-mcp-demo -n production get pods | grep payment
+kubectl -n production get pods | grep payment
 ```
 **Expected:** All payment-service pods `Running`
 

@@ -302,7 +302,7 @@ tests/test_policy.py::test_u01_read_tools_allow_when_secure[list_pods] PASSED
 | `Address already in use` on port 8082 | Server.py started directly (not via start.sh) | Use `make agent`; or `kill $(lsof -ti :8082)` then restart |
 | `LibreSSL warning` | urllib3 on macOS system Python | Harmless — ignore |
 | `kind: command not found` | kind not installed | `brew install kind` |
-| `error: no configuration has been provided` | KUBECONFIG not set | `export KUBECONFIG=~/.kube/mcp-demo.yaml` |
+| `error: no configuration has been provided` | KUBECONFIG not set | Ensure your cluster kubeconfig is set: `kubectl config current-context` |
 | Smoke test shows 3 failures | OOM fault is active | Correct pre-demo state OR run `make recover` |
 | `test_e01` SKIPPED | Port-forwards not running | `make agent` then re-run |
 | `security_on: false` on startup | Code regression | `git checkout agent/server.py` |

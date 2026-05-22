@@ -17,30 +17,25 @@ If it exits 1 — read the CRITICAL failures and apply the recovery command prin
 
 ---
 
-## What preflight.sh checks (44 checks on this machine)
+## What preflight.sh checks (44 checks with kind+docker present, 42 without)
 
 ### Section 1: Required Tools
 | Check | Success output | Failure output | Recovery |
 |---|---|---|---|
-| kind | `✓ kind found (/opt/homebrew/bin/kind)` | `✗ CRITICAL kind not found` | `brew install kind` |
-| kubectl | `✓ kubectl found (/usr/local/bin/kubectl)` | `✗ CRITICAL kubectl not found` | `brew install kubectl` |
-| docker | `✓ docker found (/usr/local/bin/docker)` | `✗ CRITICAL docker not found` | Install Docker Desktop |
-| helm | `✓ helm found (/opt/homebrew/bin/helm)` | `✗ CRITICAL helm not found` | `brew install helm` |
-| python3 | `✓ python3 found (/usr/bin/python3)` | `✗ CRITICAL python3 not found` | `brew install python3` |
-| curl | `✓ curl found (/usr/bin/curl)` | `✗ CRITICAL curl not found` | macOS built-in; reinstall Xcode tools |
-| lsof | `✓ lsof found (/usr/sbin/lsof)` | `✗ CRITICAL lsof not found` | macOS built-in; reinstall Xcode tools |
+| kubectl | `✓ kubectl found (...)` | `✗ CRITICAL kubectl not found` | `brew install kubectl` or via k8s docs |
+| helm | `✓ helm found (...)` | `✗ CRITICAL helm not found` | `brew install helm` |
+| python3 | `✓ python3 found (...)` | `✗ CRITICAL python3 not found` | `brew install python3` |
+| curl | `✓ curl found (...)` | `✗ CRITICAL curl not found` | macOS built-in; reinstall Xcode tools |
+| lsof | `✓ lsof found (...)` | `✗ CRITICAL lsof not found` | macOS built-in; reinstall Xcode tools |
+| docker *(optional)* | `✓ docker found (...) — optional` | `⚠ WARN docker not found — only needed for new cluster` | Skip if using existing cluster |
+| kind *(optional)* | `✓ kind found (...) — optional` | `⚠ WARN kind not found — only needed for new cluster` | Skip if using existing cluster |
 
-### Section 2: Docker
+### Section 2: Kubernetes Cluster
 | Check | Success output | Failure output | Recovery |
 |---|---|---|---|
-| Docker daemon | `✓ Docker daemon running` | `✗ CRITICAL Docker is not running` | Open Docker Desktop |
-
-### Section 3: Kind Cluster
-| Check | Success output | Failure output | Recovery |
-|---|---|---|---|
-| Cluster exists | `✓ kind cluster 'mcp-demo' exists` | `✗ CRITICAL kind cluster 'mcp-demo' not found` | `make up` (5–8 min) |
-| Kubeconfig | `✓ kubeconfig exists at ~/.kube/mcp-demo.yaml` | `✗ CRITICAL kubeconfig missing` | `make up` |
-| Node Ready | `✓ cluster node Ready` | `✗ CRITICAL cluster node not Ready` | `make down && make up` |
+| Context found | `✓ kubectl context: <your-context>` | `✗ CRITICAL No kubectl context found` | Set KUBECONFIG or KUBE_CONTEXT env var |
+| Cluster reachable | `✓ cluster reachable` | `✗ CRITICAL cluster not reachable` | Check kubeconfig and cluster status |
+| Node Ready | `✓ N node(s) Ready` | `✗ CRITICAL no Ready nodes found` | `kubectl get nodes` to diagnose |
 
 ### Section 4: Production Pods
 | Check | Success output | Failure output | Recovery |
@@ -78,12 +73,13 @@ If it exits 1 — read the CRITICAL failures and apply the recovery command prin
 | Policy gates | `✓ Policy Gates: ON ✓` | `⚠ WARN Policy Gates: OFF` | Press F4 in browser, or toggle in Demo Controls |
 | Recordings | `✓ Recordings available: 2` | `⚠ WARN Expected 2 recordings, found N` | Check agent/demo-recordings/ |
 
-### Section 8: API Key
+### Section 8: AI Provider
 | Check | Success output | Failure output | Recovery |
 |---|---|---|---|
-| API key present | `✓ ANTHROPIC_API_KEY in agent/.env (N chars)` | `⚠ WARN No ANTHROPIC_API_KEY set` | Enter key in browser UI OR `echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env` |
+| AI provider configured | `✓ AI provider configured: <source>` | `⚠ WARN No AI provider configured` | Enter key or URL in browser UI (Sidebar → AI Engine) |
 
-> This is a WARN, not a CRITICAL. You can enter the key in the browser UI during the demo.
+> This is a WARN, not a CRITICAL. Supports Anthropic, OpenAI, OpenRouter, Groq, Google AI, Ollama.
+> You can enter the key in the browser UI during the demo. Any provider key or `AI_BASE_URL` for Ollama satisfies this check.
 
 ### Section 9: Demo Recordings
 | Check | Success output | Failure output | Recovery |
@@ -125,32 +121,29 @@ If it exits 1 — read the CRITICAL failures and apply the recovery command prin
 
 ---
 
-## Full passing preflight output (from actual execution 2026-05-23)
+## Full passing preflight output (representative — your paths and context name will differ)
 
 ```
 ╔══════════════════════════════════════════════╗
 ║  PREFLIGHT CHECK — Conference Demo Safety    ║
 ╚══════════════════════════════════════════════╝
 
-  Target: kind cluster 'kind-mcp-demo'
-  Time:   Sat May 23 00:01:56 IST 2026
+  Context: <your-kubectl-context>
+  Time:    <current date/time>
 
 ── Required Tools ──
-  ✓ kind found (/opt/homebrew/bin/kind)
   ✓ kubectl found (/usr/local/bin/kubectl)
-  ✓ docker found (/usr/local/bin/docker)
   ✓ helm found (/opt/homebrew/bin/helm)
   ✓ python3 found (/usr/bin/python3)
   ✓ curl found (/usr/bin/curl)
   ✓ lsof found (/usr/sbin/lsof)
+  ✓ docker found (/usr/local/bin/docker) — optional
+  ✓ kind found (/opt/homebrew/bin/kind) — optional
 
-── Docker ──
-  ✓ Docker daemon running
-
-── Kind Cluster ──
-  ✓ kind cluster 'mcp-demo' exists
-  ✓ kubeconfig exists at /Users/koti/.kube/mcp-demo.yaml
-  ✓ cluster node Ready
+── Kubernetes Cluster ──
+  ✓ kubectl context: <your-context>
+  ✓ cluster reachable
+  ✓ 1 node(s) Ready
 
 ── Production Pods ──
   ✓ payment-service: 2 replica(s) available
@@ -177,8 +170,8 @@ If it exits 1 — read the CRITICAL failures and apply the recovery command prin
   ✓ Policy Gates: ON ✓ (correct for Acts 1 and 2)
   ✓ Recordings available: 2 (cascade + dangerous-agent)
 
-── API Key ──
-  ⚠ WARN No ANTHROPIC_API_KEY set — you will need to enter it in the browser UI
+── AI Provider ──
+  ⚠ WARN No AI provider configured — enter key or URL in browser UI (Sidebar → AI Engine)
 
 ── Demo Recordings ──
   ✓ cascade.jsonl present (42 events, 16897 bytes)
