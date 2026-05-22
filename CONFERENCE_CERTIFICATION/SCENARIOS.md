@@ -556,11 +556,12 @@ make recover
 
 **Actual output (executed 2026-05-23):**
 ```
-[ok] order-service restored
-[ok] payment-service restored
-[ok] notification-service restored
-[ok] auth-service restored
-[ok] email-gateway restored
+[inject] Recovering ALL injected faults...
+deployment.apps/notification-service restarted
+deployment.apps/order-service scaled
+[inject] Waiting for pods to stabilize...
+deployment "payment-service" successfully rolled out
+[recovered] All incidents recovered
 ```
 
 Wait ~30s, then verify:

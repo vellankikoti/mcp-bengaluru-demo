@@ -12,7 +12,7 @@ Certifier sign-off required from: presenter (Koti Vellanki)
 
 | Item | Value |
 |---|---|
-| Commit | `8ba0338` — Add e2e metrics/audit tests (82 total, up from 75) |
+| Commit | See `git log --oneline -1` — red team validation + doc fixes |
 | Branch | `main` |
 | Dirty files | 0 (clean) |
 
@@ -162,7 +162,7 @@ These are documented gaps. None block the demo. All are disclosed on stage or in
 
 ## Certification Checklist
 
-- [x] All 9 certification documents created
+- [x] All 11 certification documents created
 - [x] environment-report.md: all versions detected and recorded
 - [x] INSTALL.md: every command verified with expected output
 - [x] PRECHECK.md: all 44 preflight checks documented
@@ -181,7 +181,12 @@ These are documented gaps. None block the demo. All are disclosed on stage or in
 - [x] Audit log: writes confirmed for DENY and ALLOW paths
 - [x] Replay streams: both recordings confirmed streaming SSE
 - [x] Port conflict: documented and recovery path verified
+- [x] speaker-rehearsal.md: section-by-section expected vs actual vs recovery
+- [x] e2e-final-report.md: all red team findings, 6 bugs found and fixed, final verdict
+- [x] RELEASE_NOTES.md: changelog and known gaps
 - [x] No critical failures remain
+- [x] Path traversal vulnerability found and fixed
+- [x] All documentation commands verified on actual machine
 
 ---
 
@@ -192,12 +197,12 @@ These are documented gaps. None block the demo. All are disclosed on stage or in
 ║                                                          ║
 ║   ✅  READY FOR GLOBAL STAGE                             ║
 ║                                                          ║
-║   Commit:     8ba0338                                    ║
 ║   Tests:      82/82 PASS                                 ║
 ║   Preflight:  44 checks · 0 critical failures            ║
 ║   Cluster:    20/20 smoke checks                         ║
 ║   Scenarios:  20/20 verified                             ║
-║   Docs:       9/9 created                                ║
+║   Docs:       11/11 created                              ║
+║   Bugs found: 6 — all fixed                              ║
 ║                                                          ║
 ║   Known gaps: 5 (all documented, none blocking)          ║
 ║   Risks: mitigated with replay fallbacks                 ║

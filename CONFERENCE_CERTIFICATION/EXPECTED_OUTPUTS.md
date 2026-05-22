@@ -89,11 +89,17 @@ Limits:
 
 ### `make recover`
 ```
-[ok] order-service restored
-[ok] payment-service restored
-[ok] notification-service restored
-[ok] auth-service restored
-[ok] email-gateway restored
+[inject] Recovering ALL injected faults...
+deployment.apps/notification-service restarted
+deployment.apps/order-service scaled
+[inject] Waiting for pods to stabilize...
+deployment "payment-service" successfully rolled out
+[recovered] All incidents recovered
+
+NAME                    READY   STATUS    RESTARTS   AGE
+auth-service-XXX        1/1     Running   1          15d
+...
+payment-service-XXX     1/1     Running   0          60s
 ```
 
 ---

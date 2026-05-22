@@ -44,9 +44,9 @@ remote: Counting objects: ...
 
 **Verify:**
 ```bash
-ls
+ls agent/ demo/ cluster/ tests/ Makefile README.md
 ```
-**Expected:** You see `agent/`, `demo/`, `cluster/`, `tests/`, `Makefile`, `README.md`
+**Expected:** No "No such file or directory" errors — all six must exist.
 
 **Troubleshoot:** If git fails, check your SSH key or use HTTPS URL.
 
@@ -56,7 +56,7 @@ ls
 
 **Command:**
 ```bash
-pip install -r agent/requirements.txt
+python3 -m pip install -r agent/requirements.txt
 ```
 
 **Expected output:**
@@ -252,8 +252,8 @@ Note: E2E metrics tests (test_e01–e05) require port-forwards running.
 If port-forwards are not running, these 5 tests skip automatically.
 
 **Troubleshoot:**
-- `ModuleNotFoundError: kubernetes` → re-run `pip install -r agent/requirements.txt`
-- `asyncio` errors → ensure pytest-asyncio is installed: `pip install pytest-asyncio`
+- `ModuleNotFoundError: kubernetes` → re-run `python3 -m pip install -r agent/requirements.txt`
+- `asyncio` errors → ensure pytest-asyncio is installed: `python3 -m pip install pytest-asyncio`
 
 ---
 
@@ -279,7 +279,7 @@ http://localhost:8082?mode=presentation
 |---|---|
 | Prerequisites | 10–15 min (once per machine) |
 | `make up` (bootstrap) | 5–8 min |
-| `pip install` | 1 min |
+| `python3 -m pip install` | 1 min |
 | `make agent` | 5 sec |
 | `bash demo/preflight.sh` | 30 sec |
 | **Total (after prerequisites)** | **~10 min** |

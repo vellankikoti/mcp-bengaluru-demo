@@ -29,7 +29,7 @@ make smoke       # verify all 9 pods are Running and observability is reachable
 ### 3. Install Python dependencies
 
 ```bash
-pip install -r agent/requirements.txt
+python3 -m pip install -r agent/requirements.txt
 ```
 
 ### 4. Add your API key

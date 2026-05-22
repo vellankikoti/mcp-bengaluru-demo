@@ -898,10 +898,12 @@ async def replay(scenario: str, speed: float = 1.0):
     scenario: filename without .jsonl (e.g. 'cascade', 'dangerous-agent')
     speed: playback multiplier — 1.0=real-time, 2.0=double speed, 0.5=half speed
     """
-    recording = RECORDINGS_DIR / f"{scenario}.jsonl"
+    recording = (RECORDINGS_DIR / f"{scenario}.jsonl").resolve()
+    if not str(recording).startswith(str(RECORDINGS_DIR.resolve())):
+        raise HTTPException(status_code=404, detail=f"Recording not found: {scenario}")
     if not recording.exists():
         available = [p.stem for p in RECORDINGS_DIR.glob("*.jsonl")]
-        raise HTTPException(status_code=404, detail=f"No recording '{scenario}'. Available: {available}")
+        raise HTTPException(status_code=404, detail=f"Recording not found: {scenario}. Available: {available}")
 
     speed = max(0.1, min(speed, 10.0))
 

@@ -232,7 +232,7 @@ Expected: `42` and `10`
 
 **Fix:**
 ```bash
-pip install -r agent/requirements.txt
+python3 -m pip install -r agent/requirements.txt
 ```
 
 **Verify:**
@@ -302,7 +302,7 @@ Use when: cluster gone, Docker images deleted, complete environment loss.
 
 ```bash
 make down && make up
-pip install -r agent/requirements.txt
+python3 -m pip install -r agent/requirements.txt
 make smoke
 make agent
 bash demo/preflight.sh
