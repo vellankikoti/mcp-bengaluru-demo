@@ -959,6 +959,16 @@ async def status():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    import subprocess, signal, uvicorn
     port = int(os.environ.get("PORT", 8082))
+    # Kill whatever is already holding the port so both `make agent` and
+    # `python3 server.py` behave identically on port conflicts.
+    try:
+        pids = subprocess.check_output(
+            ["lsof", "-ti", f":{port}"], text=True
+        ).split()
+        for pid in pids:
+            os.kill(int(pid), signal.SIGKILL)
+    except (subprocess.CalledProcessError, OSError):
+        pass  # port is free — nothing to kill
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False, log_level="info")

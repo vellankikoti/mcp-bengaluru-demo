@@ -454,32 +454,34 @@ Output confirms `_pf_alive()` function checks each port before starting.
 
 **Purpose:** Confirm agent startup handles port 8082 already occupied.
 
-**IMPORTANT: `make agent` (via start.sh) auto-kills whatever is on port 8082.**
-Running `python3 agent/server.py` directly does NOT — use `make agent`.
+Both `make agent` (via start.sh) and `python3 agent/server.py` now auto-kill whatever is on port 8082.
 
-**Steps (via start.sh / make agent):**
+**Steps:**
 ```bash
 # Something occupies 8082
 nc -l 8082 &
-# make agent kills it automatically
+# Either of these now handles the conflict:
 make agent
+# OR
+python3 agent/server.py
 ```
 
-**Relevant code in start.sh:**
+**Verification (executed 2026-05-23 after fix):**
 ```bash
-_pid=$(lsof -ti :"$PORT" 2>/dev/null || true)
-if [[ -n "$_pid" ]]; then
-  kill -9 $_pid 2>/dev/null || true
-fi
+nc -l 8082 &          # occupy port
+python3 agent/server.py &   # starts, kills nc, binds successfully
+curl http://localhost:8082/health
+# → {"status": "ok", "model": "claude-3-5-haiku-latest"}
 ```
 
-**Expected output:**
-```
-[agent] Port 8082 in use (pid XXXXX) — releasing it
-[agent] Starting MCP Incident Agent on http://localhost:8082
+**Relevant code in server.py (added during certification):**
+```python
+pids = subprocess.check_output(["lsof", "-ti", f":{port}"], text=True).split()
+for pid in pids:
+    os.kill(int(pid), signal.SIGKILL)
 ```
 
-**Status: VERIFIED-BY-CODE + executed (confirmed kill logic in start.sh line 61–65)**
+**Status: EXECUTED — PASS**
 
 ---
 

@@ -44,13 +44,13 @@ and act structure:
 
 ### Issue 1: port conflict scenario
 **Observation:** When running `python3 agent/server.py` directly (not via `make agent`),
-port 8082 already in use causes a hard fail: `ERROR: [Errno 48] address already in use`.
+port 8082 already in use caused a hard fail: `ERROR: [Errno 48] address already in use`.
 
-**Resolution:** Documented clearly in RECOVERY.md R-06 and SCENARIOS.md Scenario 16.
-`make agent` (via start.sh) handles this automatically. Presenter must use `make agent`, not
-`python3 server.py` directly.
+**Resolution:** Fixed in server.py — added `lsof`/`SIGKILL` logic at startup (same as start.sh).
+Both `make agent` and `python3 agent/server.py` now handle port conflicts identically.
+Verified: nc occupying :8082, then `python3 agent/server.py` killed it and started successfully.
 
-**Action:** Added explicit callout in INSTALL.md Step 5.
+**Status: FIXED**
 
 ### Issue 2: smoke test expected failure state
 **Observation:** Running `make smoke` while OOM is injected shows 3 failures. This confused

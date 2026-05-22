@@ -138,15 +138,10 @@ Say on stage: *"I'll use the pre-recorded version — this is exactly what happe
 
 **Root cause:** Previous server process still running, or another process on 8082.
 
-**Fix (via start.sh — automatic):**
+**Fix:** Both `make agent` and `python3 agent/server.py` now auto-kill whatever is on port 8082.
 ```bash
 make agent
-```
-start.sh runs: `kill -9 $(lsof -ti :8082)` automatically.
-
-**Fix (if running server.py directly):**
-```bash
-kill $(lsof -ti :8082 2>/dev/null)
+# OR
 python3 agent/server.py
 ```
 
