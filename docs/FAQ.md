@@ -1,4 +1,9 @@
-# FAQ.md
+# FAQ — Common Questions
+
+> **Navigation:** [← README](../README.md) · [Setup](INSTALL.md) · [Runbook](RUNBOOK.md) · [Recovery](RECOVERY.md) · **FAQ**
+
+---
+
 # Questions from a first-time presenter or observer
 
 ---
@@ -187,3 +192,7 @@ The demo teaches the concept without showing real credentials.
 The `AI Agent MTTR: 2m 14s` in the recovery overlay is calculated from the time the chat
 started to the time the cluster recovered. It is measured from real execution timing in the
 cascade replay. The live demo timing may vary slightly based on LLM response speed.
+
+---
+
+> **Navigation:** [← Recovery](RECOVERY.md) · **FAQ** · [← README](../README.md)

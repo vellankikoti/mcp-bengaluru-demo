@@ -1,5 +1,8 @@
-# RUNBOOK.md
-# Conference Delivery Guide — Certified Version
+# Conference Delivery Guide — Dead Runbooks, Dangerous Agents, and the Security Model That Saved Us
+
+> **Navigation:** [← README](../README.md) · [Setup](INSTALL.md) · **Runbook** · [Recovery →](RECOVERY.md) · [FAQ](FAQ.md)
+
+---
 # Dead Runbooks, Dangerous Agents, and the Security Model That Saved Us
 # MCP Dev Summit Bengaluru 2026 | Target: 20 min | Hard max: 22 min
 
@@ -340,3 +343,7 @@ make emergency-reset
 
 Restarts all deployments, removes all fault injections, restores CoreDNS.
 Use if: cluster in unknown state, pods stuck, port-forwards dead.
+
+---
+
+> **Navigation:** [← Setup](INSTALL.md) · **Runbook** · [Recovery →](RECOVERY.md) · [FAQ](FAQ.md) · [← README](../README.md)

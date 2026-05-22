@@ -1,4 +1,9 @@
-# RECOVERY.md
+# Recovery Guide — Failure Modes and Fixes
+
+> **Navigation:** [← README](../README.md) · [Setup](INSTALL.md) · [Runbook](RUNBOOK.md) · **Recovery** · [FAQ →](FAQ.md)
+
+---
+
 # Failure recovery guide — verified commands only
 
 For every failure mode: symptoms, root cause, exact fix command, verify step.
@@ -346,3 +351,7 @@ Something is wrong
         OR
         make down && make up  (5–8 min)
 ```
+
+---
+
+> **Navigation:** [← Runbook](RUNBOOK.md) · **Recovery** · [FAQ →](FAQ.md) · [← README](../README.md)

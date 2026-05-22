@@ -1,8 +1,9 @@
-# INSTALL.md
-# From zero to demo-ready on any machine
+# Setup Guide — From Zero to Demo-Ready
 
-This document works with any Kubernetes cluster — local (kind) or existing (kubeadm, GKE, EKS,
-KillerCoda, etc.). Every command is verified. Follow every step in order.
+> **Navigation:** [← README](../README.md) · **Setup** · [Runbook →](RUNBOOK.md) · [Recovery](RECOVERY.md) · [FAQ](FAQ.md)
+
+Works with any Kubernetes cluster — kind, kubeadm, KillerCoda, GKE, EKS, etc.
+Every command verified. Follow steps in order.
 
 ---
 
@@ -357,3 +358,7 @@ make down         # delete kind cluster
 # optionally:
 docker system prune -f   # reclaim Docker space
 ```
+
+---
+
+> **Next:** [Day-of Runbook →](RUNBOOK.md) · [Recovery Guide](RECOVERY.md) · [← README](../README.md)
