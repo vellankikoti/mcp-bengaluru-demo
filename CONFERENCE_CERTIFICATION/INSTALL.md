@@ -32,7 +32,7 @@ python3        → Python 3.9.x (or newer)
 
 **Command:**
 ```bash
-git clone <repo-url> mcp-bengaluru-demo
+git clone https://github.com/vellankikoti/mcp-bengaluru-demo.git mcp-bengaluru-demo
 cd mcp-bengaluru-demo
 ```
 
