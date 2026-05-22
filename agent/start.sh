@@ -81,4 +81,5 @@ echo ""
 echo -e "${GREEN}[agent]${RESET} Open http://localhost:${PORT} in your browser"
 echo ""
 
+cd "$SCRIPT_DIR"
 PORT=$PORT python3 server.py
