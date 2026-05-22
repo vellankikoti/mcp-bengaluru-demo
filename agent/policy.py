@@ -1,9 +1,31 @@
 """
-Policy engine — simulates OPA evaluation for the demo.
+Policy engine — simulates OPA (Open Policy Agent) evaluation for this demo.
 
-Each tool has exactly one rule. `evaluate()` is called before every tool
-execution. When security_on=False the engine returns ALLOW for everything,
-showing the audience what an over-permissioned agent looks like.
+─────────────────────────────────────────────────────────────
+DEMO vs PRODUCTION — READ THIS BEFORE PRESENTING
+─────────────────────────────────────────────────────────────
+What this file IS:
+  A Python dict lookup that demonstrates the CONCEPT of a policy gate.
+  Each tool has exactly one rule. `evaluate()` is called before every
+  tool execution. When security_on=False the engine returns ALLOW for
+  everything, showing the audience what an over-permissioned agent looks like.
+
+What this file IS NOT:
+  • Real OPA (Open Policy Agent) — no Rego policies, no OPA binary
+  • A sidecar / out-of-process policy engine
+  • Cryptographically enforced — the Python process trusts itself
+
+What production requires (show this slide during the talk):
+  • OPA sidecar (or OPA Gatekeeper) as a separate process
+  • Rego policy files (.rego) versioned in git
+  • Policy bundle distribution (OPA bundle server or ConfigMap)
+  • mTLS between agent and OPA sidecar
+  • Policy decision logs shipped to a SIEM
+
+The architecture diagram for this talk uses "OPA-style" deliberately.
+This implementation teaches the INTERFACE and SEMANTICS correctly.
+The production path is additive — not a rewrite.
+─────────────────────────────────────────────────────────────
 """
 from __future__ import annotations
 

@@ -3163,25 +3163,13 @@ function rbSetStepStatus(step, status) {
   }
 }
 
-function escalateToAgent() {
+async function escalateToAgent() {
   clearTimeout(_rbEscalateTimer);
 
-  // Guard: policy must be ON for Act 1 so the approval gate fires
+  // Auto-enable policy so the approval gate fires in Act 2
   if (!_securityOn) {
-    const fc = $('rb-fail-card');
-    if (fc) fc.insertAdjacentHTML('beforeend', `
-      <div style="margin-top:12px;padding:12px 16px;background:rgba(217,119,6,.1);
-                  border:1px solid rgba(217,119,6,.35);border-radius:var(--r-lg);">
-        <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:4px;">
-          ⚠ Policy Gates are OFF
-        </div>
-        <div style="font-size:12px;color:var(--txt-3);">
-          For Act 1 you want policy <strong>ON</strong> — so the agent shows the
-          approval gate when it calls <code>restart_deployment</code>.<br>
-          Turn it on in <strong>Demo Controls → Policy Gates</strong>, then escalate.
-        </div>
-      </div>`);
-    return;
+    await toggleSecurity();
+    toast('Policy gates auto-enabled for handoff to AI Agent');
   }
 
   closeRunbook();

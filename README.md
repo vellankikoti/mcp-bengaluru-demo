@@ -298,6 +298,14 @@ FastAPI Agent Server  ──► Any LLM (Anthropic / OpenAI / OpenRouter / Groq 
 
 When Policy Gates are OFF, every tool returns ALLOW — that's the dangerous agent state.
 
+> **Demo vs. Production note:** The policy engine in this demo is a Python dict lookup that teaches the *interface and semantics* of a policy gate. Production deployments replace it with:
+> - [OPA (Open Policy Agent)](https://www.openpolicyagent.org/) sidecar with Rego policies
+> - Policy bundle server for versioned rule distribution
+> - mTLS between agent and OPA for tamper resistance
+> - Decision logs shipped to a SIEM for compliance audit
+>
+> This implementation is intentionally educational. The architecture is correct; the enforcement mechanism is simplified for demo reliability. See `agent/policy.py` for the full disclosure note.
+
 ---
 
 ## Project Structure

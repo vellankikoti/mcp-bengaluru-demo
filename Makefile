@@ -1,4 +1,4 @@
-.PHONY: up down reset smoke agent inject-oom inject-retry inject-cascade inject-dns recover setup-tmux checkpoint
+.PHONY: up down reset smoke agent inject-oom inject-retry inject-cascade inject-dns recover setup-tmux checkpoint preflight test
 
 CLUSTER_NAME := mcp-demo
 KUBECONFIG_PATH := $(HOME)/.kube/mcp-demo.yaml
@@ -51,3 +51,9 @@ checkpoint:
 
 emergency-reset:
 	@bash demo/recovery/emergency-reset.sh
+
+preflight:
+	@bash demo/preflight.sh
+
+test:
+	@python3 -m pytest tests/test_policy.py tests/test_recordings.py tests/test_tools_schema.py -v --tb=short --asyncio-mode=auto

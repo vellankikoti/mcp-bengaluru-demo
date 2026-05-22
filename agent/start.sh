@@ -11,16 +11,9 @@ if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
     export $(grep "ANTHROPIC_API_KEY" .env | xargs)
     echo -e "${GREEN}[agent]${RESET} Loaded ANTHROPIC_API_KEY from .env"
   else
-    echo -e "${RED}[agent]${RESET} ANTHROPIC_API_KEY not set."
+    echo -e "${YELLOW}[agent]${RESET} No API key found — enter your key in the browser UI after startup."
+    echo -e "${YELLOW}[agent]${RESET} Sidebar → AI Engine → paste key → Save & Test"
     echo ""
-    echo "  Option 1 — export before running:"
-    echo "    export ANTHROPIC_API_KEY=sk-ant-..."
-    echo "    bash demo/start-agent.sh"
-    echo ""
-    echo "  Option 2 — create agent/.env file:"
-    echo "    echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env"
-    echo ""
-    exit 1
   fi
 fi
 
@@ -63,6 +56,14 @@ fi
 sleep 1
 
 PORT="${PORT:-8082}"
+
+# Free the port if something else is already holding it
+_pid=$(lsof -ti :"$PORT" 2>/dev/null || true)
+if [[ -n "$_pid" ]]; then
+  echo -e "${YELLOW}[agent]${RESET} Port ${PORT} in use (pid $_pid) — releasing it"
+  kill -9 $_pid 2>/dev/null || true
+  sleep 0.5
+fi
 
 echo -e "${CYAN}[agent]${RESET} Starting MCP Incident Agent on http://localhost:${PORT}"
 echo -e "${CYAN}[agent]${RESET} Cluster:  ${CTX} (kubeconfig: $KUBECONFIG)"

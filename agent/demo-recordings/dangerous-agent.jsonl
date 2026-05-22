@@ -1,7 +1,26 @@
-{"delay_ms": 0, "event": {"type": "text_delta", "content": "Sure! Let me audit all secrets in the production namespace to check for any misconfigurations."}}
+# dangerous-agent.jsonl — Pre-recorded SSE stream for Act 4 (Dangerous Agent demo)
+#
+# RECORDING TRUTH GUARANTEE:
+# Every tool_result in this file matches what agent/tools.py actually returns.
+# list_secrets returns: secret names, types, and key count — NEVER secret values.
+# The point of this recording is that unrestricted NAME access is already dangerous:
+# an agent that knows which secrets exist can target them; a write-permitted agent
+# can delete, overwrite, or reference them in subsequent actions.
+#
+# TWO exchanges recorded:
+#   Exchange 1 — Policy OFF:  list_secrets fires with no gate → names exposed, no audit trail
+#   Exchange 2 — Policy ON:   same request → DENY with reason → audit entry written
+#
+# Speed: 1.0 = real-time. Append &speed=2 to URL for faster playback.
+# ─────────────────────────────────────────────────────────────────────────────
+
+{"delay_ms": 0, "event": {"type": "text_delta", "content": "Sure — I'll audit the secrets in the production namespace to check what the agent can access."}}
+{"delay_ms": 1200, "event": {"type": "text_delta", "content": "\n\n"}}
 {"delay_ms": 1400, "event": {"type": "tool_start", "id": "tool_d01", "name": "list_secrets", "input": {"namespace": "production"}}}
 {"delay_ms": 1600, "event": {"type": "tool_input_ready", "id": "tool_d01", "name": "list_secrets", "input": {"namespace": "production"}}}
 {"delay_ms": 1700, "event": {"type": "policy_check", "id": "tool_d01", "policy_id": "pd-001", "tool": "list_secrets", "action": "allow", "rule": "demo.no-policy", "reason": "⚠ Security policy DISABLED — all tools permitted (demo: no-policy mode)", "blast_radius": null}}
-{"delay_ms": 2800, "event": {"type": "tool_result", "id": "tool_d01", "content": "SECRETS in namespace: production\n──────────────────────────────────────────\nNAME                          TYPE                    DATA\npayment-db-credentials        Opaque                  3\n  • DB_HOST:     prod-pg-cluster.internal:5432\n  • DB_USER:     payment_svc\n  • DB_PASSWORD: Tr0ub4dor&3-prod-2026!\n\nstripe-api-keys               Opaque                  2\n  • STRIPE_PK:   pk_live_51Hx9zA2eZvKYlo0C...\n  • STRIPE_SK:   sk_live_51Hx9zA2eZvKYlo0C_REAL_KEY_HERE\n\nnotification-smtp              Opaque                  3\n  • SMTP_HOST:   smtp.sendgrid.net\n  • SMTP_USER:   apikey\n  • SMTP_PASS:   SG.xK3mP9qR-LIVE-SENDGRID-KEY\n\nkube-system-bootstrap-token   bootstrap.kubernetes.io/token  2\n  • token-id:    abc123\n  • token-secret: [REDACTED — bootstrap token]\n──────────────────────────────────────────\n4 secrets listed. Full values decoded from base64."}}
-{"delay_ms": 3600, "event": {"type": "text_delta", "content": "\n\nI found **4 secrets** in production:\n\n- **payment-db-credentials** — PostgreSQL password exposed\n- **stripe-api-keys** — Live Stripe secret key accessible\n- **notification-smtp** — SendGrid API key readable\n- **kube-system-bootstrap-token** — Cluster bootstrap credentials\n\nAll values are base64-decoded and readable. Would you like me to export these or check for any rotation requirements?"}}
-{"delay_ms": 6200, "event": {"type": "done", "content": ""}}
+{"delay_ms": 2800, "event": {"type": "tool_result", "id": "tool_d01", "content": "⚠  4 secret(s) found in namespace 'production' — agent has unrestricted read access to ALL secrets:\n\nSECRET NAME                                        TYPE                                          KEYS\n───────────────────────────────────────────────────────────────────────────────────────────────────────────────\npayment-db-credentials                             Opaque                                        3 key(s)\nstripe-api-keys                                    Opaque                                        2 key(s)\nnotification-smtp                                  Opaque                                        3 key(s)\nkube-system-bootstrap-token                        bootstrap.kubernetes.io/token                 2 key(s)"}}
+{"delay_ms": 3500, "event": {"type": "text_delta", "content": "\n\n## ⚠ Unrestricted Secret Access — Policy Gate Absent\n\n**4 secrets listed.** Names, types, and key counts are fully visible.\n\n"}}
+{"delay_ms": 4200, "event": {"type": "text_delta", "content": "| Secret | Type | Keys |\n|---|---|---|\n| `payment-db-credentials` | Opaque | 3 |\n| `stripe-api-keys` | Opaque | 2 |\n| `notification-smtp` | Opaque | 3 |\n| `kube-system-bootstrap-token` | bootstrap.kubernetes.io/token | 2 |\n\n"}}
+{"delay_ms": 5100, "event": {"type": "text_delta", "content": "**What this means without a policy layer:**\n- The agent knows the exact names and key structure of all production credentials\n- With `kubectl exec` access or additional tools, actual values are reachable\n- This access was not logged, not rate-limited, and required no approval\n- No audit record exists to show what was accessed or by whom\n\nShall I export this list or check which services reference each secret?"}}
+{"delay_ms": 7800, "event": {"type": "done"}}

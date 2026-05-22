@@ -121,8 +121,9 @@ _api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH
 anthropic = AsyncAnthropic(api_key=_api_key) if _api_key else AsyncAnthropic()
 
 # ── Demo / security state ────────────────────────────────────────────────────
-
-_security_on: bool = False                            # toggled by /api/demo/security
+# Policy ON by default — presenter must explicitly disable for Act 3 (dangerous agent).
+# Default-on is intentional: a forgotten toggle produces a boring Act 2, not a broken one.
+_security_on: bool = True                             # toggled by /api/demo/security
 _pending_approvals: dict[str, asyncio.Event] = {}     # request_id → Event
 _approval_decisions: dict[str, bool] = {}             # request_id → approved
 _audit_log: list[dict] = []                           # append-only, capped at 200
@@ -243,15 +244,15 @@ async def _run_tool_with_policy(name: str, tool_input: dict, call_id: str = ""):
             "tool":         name,
             "input":        tool_input,
             "blast_radius": result_policy.blast_radius,
-            "timeout_s":    300,
+            "timeout_s":    600,  # 10 min — allows dramatic pause during live demo
         })
 
         try:
-            await asyncio.wait_for(ev.wait(), timeout=300)
+            await asyncio.wait_for(ev.wait(), timeout=600)
         except asyncio.TimeoutError:
             _pending_approvals.pop(rid, None)
             _approval_decisions.pop(rid, None)
-            msg = "⏱ Approval timed out after 300s — action cancelled"
+            msg = "⏱ Approval timed out after 600s — action cancelled"
             _append_audit({
                 "ts": _time.time(), "tool": name, "input": tool_input,
                 "action": "timeout", "rule": result_policy.rule,
