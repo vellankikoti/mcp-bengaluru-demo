@@ -45,26 +45,39 @@ pip install -r agent/requirements.txt
 
 > Activate the venv in every new terminal: `source venv/bin/activate`
 
-### 4. Add your API key
+### 4. Configure AI provider
 
-**Option A — Anthropic (recommended, loads automatically):**
+Works with **any provider** — cloud or self-hosted. Pick one:
+
+**Cloud providers — add key to `agent/.env`:**
 ```bash
+# Anthropic
 echo 'ANTHROPIC_API_KEY=sk-ant-...' > agent/.env
+# OpenAI
+echo 'OPENAI_API_KEY=sk-...' > agent/.env
+# OpenRouter (100+ models, one key)
+echo 'OPENROUTER_API_KEY=sk-or-...' > agent/.env
+# Groq (fast, free tier)
+echo 'AI_API_KEY=gsk_...' > agent/.env
 ```
 
-**Option B — Any other provider (enter in browser UI):**  
-Leave `.env` empty. You'll paste the key in the browser after `make agent` starts.
+**Ollama / self-hosted (no key needed):**
+```bash
+echo 'AI_BASE_URL=http://localhost:11434/v1' > agent/.env
+echo 'AI_MODEL=llama3.2' >> agent/.env
+```
 
-> **Recommended model:** OpenRouter → `anthropic/claude-3.5-haiku`  
-> Cheap (~$0.80/M tokens), calls `restart_deployment` autonomously in one turn.
+**Browser UI (no .env needed):**  
+Leave `.env` empty → open `http://localhost:8082` → Sidebar → AI Engine → pick provider.
 
-| Provider | Key prefix | Model to use |
+| Provider | Key prefix | Recommended model |
 |---|---|---|
-| Anthropic | `sk-ant-` | `claude-sonnet-4-6` |
-| OpenRouter | `sk-or-` | `anthropic/claude-3.5-haiku` ✓ recommended |
-| OpenAI | `sk-` | `gpt-4o` |
+| Anthropic | `sk-ant-` | `claude-3-5-haiku-latest` |
+| OpenRouter | `sk-or-` | `anthropic/claude-3.5-haiku` |
+| OpenAI | `sk-` | `gpt-4o-mini` |
 | Groq | `gsk_` | `llama-3.3-70b-versatile` |
 | Google AI | `AIza` | `gemini-2.0-flash` |
+| Ollama | *(none)* | `llama3.2`, `qwen2.5`, etc. |
 
 ### 5. Verify everything works end-to-end
 

@@ -156,30 +156,67 @@ make smoke
 
 ---
 
-## STEP 4 — Set API key
+## STEP 4 — Configure AI provider
 
-You need an Anthropic API key (starts with `sk-ant-`).
+The agent works with **any AI provider** — cloud or self-hosted. Choose one:
 
-**Option A — .env file (recommended for demo):**
+---
+
+### Option A — Cloud provider via .env file (auto-loaded on startup)
+
+Create `agent/.env` with your key. Use whichever provider you have access to:
+
 ```bash
+# Anthropic Claude (recommended — best tool-calling)
 echo 'ANTHROPIC_API_KEY=sk-ant-YOUR-KEY-HERE' > agent/.env
+
+# OpenAI
+echo 'OPENAI_API_KEY=sk-YOUR-KEY-HERE' > agent/.env
+
+# OpenRouter (access to 100+ models with one key)
+echo 'OPENROUTER_API_KEY=sk-or-YOUR-KEY-HERE' > agent/.env
+
+# Groq (ultra-fast, free tier available)
+echo 'AI_API_KEY=gsk_YOUR-KEY-HERE' > agent/.env
 ```
 
-**Option B — environment variable:**
+---
+
+### Option B — Ollama or any self-hosted model (no API key needed)
+
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-YOUR-KEY-HERE
+# Point to your Ollama server (or any OpenAI-compatible endpoint)
+echo 'AI_BASE_URL=http://localhost:11434/v1' > agent/.env
+echo 'AI_MODEL=llama3.2' >> agent/.env
 ```
 
-**Option C — enter in browser UI during demo:**
-Sidebar → AI Engine → paste key → Save & Test
-
-**Verify (if using .env):**
+Ollama setup (if not already running):
 ```bash
-grep -c ANTHROPIC_API_KEY agent/.env
+ollama pull llama3.2          # or mistral, qwen2.5, etc.
+ollama serve                   # starts on localhost:11434
 ```
-**Expected:** `1`
 
-**Note:** The .env file is gitignored. It will not be committed.
+> **Note:** Self-hosted models work but may not call `restart_deployment` autonomously.
+> Tool-calling reliability varies by model. Use the cascade replay (F5) as fallback.
+
+---
+
+### Option C — Enter in browser UI (no .env needed)
+
+Leave `agent/.env` empty. After `make agent` starts:
+- Open `http://localhost:8082`
+- Sidebar → **AI Engine** → pick provider → paste key → **Save & Test**
+- For Ollama: pick **Custom** → enter Base URL → enter model name
+
+---
+
+**Verify .env is loaded (if using Option A or B):**
+```bash
+cat agent/.env
+```
+**Expected:** your key or URL is visible (not empty).
+
+**Note:** `agent/.env` is gitignored — it will never be committed.
 
 ---
 

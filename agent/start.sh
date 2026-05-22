@@ -5,21 +5,40 @@
 # Env overrides:
 #   KUBE_CONTEXT — kubectl context to use (default: current context)
 #   PORT         — agent HTTP port (default: 8082)
+#
+# .env file supports any provider (all optional — can also configure in browser UI):
+#   ANTHROPIC_API_KEY=sk-ant-...          Anthropic Claude
+#   OPENAI_API_KEY=sk-...                 OpenAI
+#   OPENROUTER_API_KEY=sk-or-...          OpenRouter
+#   AI_API_KEY=<any key>                  Generic — any provider key
+#   AI_BASE_URL=http://localhost:11434/v1 Ollama or any OpenAI-compatible endpoint
+#   AI_MODEL=llama3.2                     Model override
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RESET='\033[0m'
 
-# ── API key ───────────────────────────────────────────────────────────────────
-if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  if [[ -f "$SCRIPT_DIR/.env" ]] && grep -q "ANTHROPIC_API_KEY" "$SCRIPT_DIR/.env"; then
-    export $(grep "ANTHROPIC_API_KEY" "$SCRIPT_DIR/.env" | xargs)
-    echo -e "${GREEN}[agent]${RESET} Loaded ANTHROPIC_API_KEY from .env"
-  else
-    echo -e "${YELLOW}[agent]${RESET} No API key found — enter your key in the browser UI after startup."
-    echo -e "${YELLOW}[agent]${RESET} Sidebar → AI Engine → paste key → Save & Test"
-    echo ""
-  fi
+# ── Load .env ─────────────────────────────────────────────────────────────────
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  # Export all non-comment, non-empty lines
+  set -a
+  # shellcheck disable=SC1090
+  source <(grep -v '^\s*#' "$SCRIPT_DIR/.env" | grep -v '^\s*$')
+  set +a
+  echo -e "${GREEN}[agent]${RESET} Loaded .env from $SCRIPT_DIR/.env"
+fi
+
+# Detect if any AI key/URL is configured
+_has_ai_config=false
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_API_KEY AI_BASE_URL; do
+  if [[ -n "${!_var:-}" ]]; then _has_ai_config=true; break; fi
+done
+
+if [[ "$_has_ai_config" == "false" ]]; then
+  echo -e "${YELLOW}[agent]${RESET} No AI provider configured — enter your key or URL in the browser UI."
+  echo -e "${YELLOW}[agent]${RESET} Sidebar → AI Engine → choose provider → Save & Test"
+  echo -e "${YELLOW}[agent]${RESET} Supports: Anthropic, OpenAI, OpenRouter, Groq, Google AI, Ollama (any OpenAI-compatible)"
+  echo ""
 fi
 
 # ── Cluster context ───────────────────────────────────────────────────────────

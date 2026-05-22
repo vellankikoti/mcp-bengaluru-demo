@@ -165,24 +165,42 @@ else
 fi
 
 # ── 8. API KEY ────────────────────────────────────────────────────────────────
-section "API Key"
-if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
-  KEY_LEN=${#ANTHROPIC_API_KEY}
-  if [[ $KEY_LEN -gt 20 ]]; then
-    pass "ANTHROPIC_API_KEY set (${KEY_LEN} chars)"
-  else
-    fail "ANTHROPIC_API_KEY looks too short ($KEY_LEN chars) — check for typos"
+section "AI Provider"
+# Check for any supported provider key or base URL
+_ai_configured=false
+_ai_source=""
+
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_API_KEY; do
+  if [[ -n "${!_var:-}" ]]; then
+    _ai_configured=true
+    _ai_source="$_var in environment (${#!_var} chars)"
+    break
   fi
-elif [[ -f "$AGENT_DIR/.env" ]] && grep -q "ANTHROPIC_API_KEY" "$AGENT_DIR/.env"; then
-  STORED_KEY=$(grep "ANTHROPIC_API_KEY" "$AGENT_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
-  KEY_LEN=${#STORED_KEY}
-  if [[ $KEY_LEN -gt 20 ]]; then
-    pass "ANTHROPIC_API_KEY in agent/.env ($KEY_LEN chars)"
-  else
-    fail "ANTHROPIC_API_KEY in .env looks invalid ($KEY_LEN chars)"
-  fi
+done
+
+if [[ "$_ai_configured" == "false" ]] && [[ -n "${AI_BASE_URL:-}" ]]; then
+  _ai_configured=true
+  _ai_source="AI_BASE_URL=$AI_BASE_URL (self-hosted/Ollama)"
+fi
+
+if [[ "$_ai_configured" == "false" ]] && [[ -f "$AGENT_DIR/.env" ]]; then
+  for _var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_API_KEY AI_BASE_URL; do
+    if grep -q "^${_var}=" "$AGENT_DIR/.env" 2>/dev/null; then
+      _val=$(grep "^${_var}=" "$AGENT_DIR/.env" | cut -d= -f2- | tr -d '"' | tr -d "'")
+      if [[ -n "$_val" ]]; then
+        _ai_configured=true
+        _ai_source="$_var in agent/.env"
+        break
+      fi
+    fi
+  done
+fi
+
+if [[ "$_ai_configured" == "true" ]]; then
+  pass "AI provider configured: $_ai_source"
 else
-  warn "No ANTHROPIC_API_KEY set — you will need to enter it in the browser UI before the demo"
+  warn "No AI provider configured — enter key or URL in browser UI (Sidebar → AI Engine)"
+  warn "Supports: Anthropic, OpenAI, OpenRouter, Groq, Google AI, Ollama, any OpenAI-compatible"
 fi
 
 # ── 9. RECORDINGS ────────────────────────────────────────────────────────────
